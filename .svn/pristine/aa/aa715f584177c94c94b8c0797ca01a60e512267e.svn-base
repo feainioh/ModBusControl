@@ -1,0 +1,189 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace ECInspect
+{
+    /*******************自定义类和结构*************************/
+
+    /// <summary>
+    /// EC的测试结果【正式】
+    /// </summary>
+    internal class EC_TestResultItem
+    {
+        /// <summary>
+        /// 本轮的测试结果
+        /// </summary>
+        private List<EC_NGItem> Round_Item = new List<EC_NGItem>();
+
+        private EC_NGItem m_Item ;
+        /// <summary>
+        /// 具体的测试结果
+        /// </summary>
+        internal EC_NGItem Item 
+        {
+            get {
+                m_isOnceOK = false;
+                bool OnceNG = false;
+                bool OnceOK = false;
+
+                if (INIFileValue.Product_NK == 1)//图替开启
+                {
+                    Round_Item.ForEach(x =>
+                    {
+                        if (x != EC_NGItem.PASS) OnceNG = true;
+                        else if (x == EC_NGItem.PASS) OnceOK = true;
+                    });
+
+                    if (OnceOK && OnceNG)//既有OK也有NG
+                    {
+                        m_isOnceOK = true;
+                        m_Item = EC_NGItem.PASS;
+                    }
+                    else if (!OnceNG)//全部OK
+                    {
+                        m_Item = EC_NGItem.PASS;
+                    }
+                    else if (!OnceOK)//全部NG
+                    {
+                        m_Item = Round_Item[Round_Item.Count - 1];//返回最后一次的测试结果
+                    }
+                }
+                else m_Item = Round_Item[Round_Item.Count - 1];//图替功能关闭，获取最后一次的测试结果
+
+                return m_Item; 
+            } 
+        }
+
+        private bool m_isOnceOK ;
+        /// <summary>
+        /// 图替功能，至少有一次OK
+        /// </summary>
+        internal bool isOnceOK { get { return m_isOnceOK; } }
+
+        internal EC_TestResultItem(EC_NGItem Item)
+        {
+            ChangeResult(Item);
+        }
+
+        /// <summary>
+        /// 更改测试结果
+        /// </summary>
+        /// <param name="CurItem">本次测试结果</param>
+        internal void ChangeResult(EC_NGItem CurItem)
+        {
+            Round_Item.Add(CurItem);
+        }
+    }
+
+    /// <summary>
+    /// 范围
+    /// </summary>
+    class Range_Double
+    {
+        private double m_doubleMax, m_doubleMin;
+
+        /// <summary>
+        /// 获取最大值
+        /// </summary>
+        internal double MAX { get { return m_doubleMax; } }
+        /// <summary>
+        /// 获取最小值
+        /// </summary>
+        internal double MIN { get { return m_doubleMin; } }
+
+        /// <summary>
+        /// double的范围
+        /// </summary>
+        /// <param name="Max">最大值</param>
+        /// <param name="Min">最小值</param>
+        public Range_Double(double Max, double Min)
+        {
+            this.m_doubleMax = Max;
+            this.m_doubleMin = Min;
+        }
+    }
+
+     /// <summary>
+    /// 范围
+    /// </summary>
+    class Range_Int
+    {
+        private int m_intMax, m_intMin;
+
+        /// <summary>
+        /// 获取最大值
+        /// </summary>
+        internal int MAX { get { return m_intMax; } }
+        /// <summary>
+        /// 获取最小值
+        /// </summary>
+        internal int MIN { get { return m_intMin; } }
+
+        /// <summary>
+        /// int的范围
+        /// </summary>
+        /// <param name="Max">最大值</param>
+        /// <param name="Min">最小值</param>
+        public Range_Int(int Max, int Min)
+        {
+            this.m_intMax = Max;
+            this.m_intMin = Min;
+        }
+    }
+
+    class TextInfo
+    {
+        /// <summary>
+        /// 字符串
+        /// </summary>
+        public string Text;
+        /// <summary>
+        /// 字符串颜色
+        /// </summary>
+        public System.Drawing.Color TextColor;
+
+        public TextInfo(string text, System.Drawing.Color color)
+        {
+            this.Text = text;
+            this.TextColor = color;
+        }
+    }
+
+    /// <summary>
+    /// PLC异常
+    /// </summary>
+    class PLCErr
+    {
+        /// <summary>
+        /// 该异常是否出现
+        /// </summary>
+        public bool Show = false;
+        /// <summary>
+        /// 异常的字符串
+        /// </summary>
+        public string ErrStr = string.Empty;
+
+        public PLCErr(string str)
+        {
+            this.ErrStr = str;
+        }
+    }
+
+    /// <summary>
+    /// 确认值
+    /// </summary>
+    class ValueConfirm
+    {
+        public int Value = 0;
+        /// <summary>
+        /// 是否已经确认
+        /// </summary>
+        public bool IsConfirm = false;
+        /// <summary>
+        /// 是否为原点【是的 第一次测试即确认值】
+        /// </summary>
+        public bool IsOrigin = false;
+    }
+}

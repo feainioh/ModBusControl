@@ -1,0 +1,174 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace ECInspect
+{
+    public partial class ManualForm : Frame
+    {
+        public ManualForm()
+        {
+            InitializeComponent();
+
+            this.WindowRefresh.Tick += new EventHandler(WindowRefresh_Tick);
+            WindowRefresh_Tick(null, EventArgs.Empty);//立刻刷新一次
+        }
+
+        private void WindowRefresh_Tick(object sender, EventArgs e)
+        {
+            this.either_Press.LeftPress = !GlobalVar.c_Modbus.Coils.Cylinder_DownPressure.Value;//下压汽缸
+            this.either_DiNianZhe.LeftPress = GlobalVar.c_Modbus.Coils.DiNianZhe.Value;//低粘着
+            this.either_DownJigCylinder.LeftPress = GlobalVar.c_Modbus.Coils.DownJigCylinder.Value;//下治具电磁阀
+
+            this.Invalidate();
+        }
+
+        private void ManualForm_Load(object sender, EventArgs e)
+        {
+            this.btn_CCD.Enabled = GlobalVar.CCDEnable;
+        }
+
+        private void btn_AdjustNozzle_Click(object sender, EventArgs e)
+        {
+            ShowFrame(ClickBtn.Nozzle);
+        }
+
+        private void btn_CCD_Click(object sender, EventArgs e)
+        {
+            ShowFrame(ClickBtn.CCD);
+        }
+
+        private void btn_Mark_Click(object sender, EventArgs e)
+        {
+            ShowFrame(ClickBtn.Mark);
+        }
+
+        private void ShowFrame(ClickBtn cb)
+        {
+            Frame form = null;
+            switch (cb)
+            {
+                case ClickBtn.Nozzle:
+                    form = new NozzleForm();
+                    break;
+                case ClickBtn.Mark:
+                    form = new MarkForm();
+                    break;
+                case ClickBtn.CCD:
+                    if (GlobalVar.CCD == null) return;
+                    form = new CCDForm();
+                    break;
+                default:
+                    //默认窗口，测试用···
+                    form = new Frame();
+                    break;
+            }
+            form.TopLevel = false;
+            form.Parent = this;
+            form.MdiParent = this.MdiParent;
+            form.ShowDialog();
+        }
+
+        private void btn_MoveToProduct_Click(object sender, EventArgs e)
+        {
+            if (GlobalVar.c_Modbus == null || !GlobalVar.c_Modbus.Coils.StartLeft.Value) return;
+            GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.YJigLocation, true);
+        }
+
+        private void btn_MoveToCCD_Click(object sender, EventArgs e)
+        {
+            if (GlobalVar.c_Modbus == null || !GlobalVar.c_Modbus.Coils.StartLeft.Value) return;
+            GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.TakePhotoPosition, true);
+        }
+
+        private void btn_MoveToNazzie_Click(object sender, EventArgs e)
+        {
+            if (GlobalVar.c_Modbus == null || !GlobalVar.c_Modbus.Coils.StartLeft.Value) return;
+            GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.YReverseLocation, true);
+        }
+
+        private void btn_MoveToEdge_Click(object sender, EventArgs e)
+        {
+            if (GlobalVar.c_Modbus == null || !GlobalVar.c_Modbus.Coils.StartLeft.Value) return;
+            GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.YPlaceLocation, true);
+        }
+
+        private void btn_Disassemble_Click(object sender, EventArgs e)
+        {
+            btn_Disassemble.Visible = false;
+
+            Either cylnder = new Either();
+            cylnder.Location = btn_Disassemble.Location;
+            cylnder.Title = "汽缸";
+            cylnder.BtnLeftText = "ON";
+            cylnder.BtnRightText = "OFF";
+            cylnder.Show();
+            btn_Disassemble.Parent.Controls.Add(cylnder);
+            cylnder.Event_BtnClick += new Either.dele_LeftRight(cylnder_Event_BtnClick);
+        }
+
+        private void cylnder_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            {
+                case LeftRightSide.Left:
+
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_LeftRightClamp, false);
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_BeforeBack, false);
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_UpDown, false);
+                    break;
+                case LeftRightSide.Right:
+
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_LeftRightClamp, true);
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_BeforeBack, true);
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_UpDown, true);
+                    break;
+            }
+        }
+
+        private void either_Press_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            { 
+                case LeftRightSide.Left:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_DownPressure, false);
+                    break;
+                case LeftRightSide.Right:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_DownPressure, true);
+                    break;
+            }
+        }
+
+        private void either_DiNianZhe_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            {
+                case LeftRightSide.Left:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.DiNianZhe, true);
+                    break;
+                case LeftRightSide.Right:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.DiNianZhe, false);
+                    break;
+            }           
+        }
+
+        private void either_DownJigCylinder_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            {
+                case LeftRightSide.Left:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.DownJigCylinder, true);
+                    break;
+                case LeftRightSide.Right:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.DownJigCylinder, false);
+                    break;
+            }           
+        }
+
+    }
+}

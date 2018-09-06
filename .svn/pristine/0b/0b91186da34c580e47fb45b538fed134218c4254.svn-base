@@ -1,0 +1,109 @@
+﻿namespace ECInspect
+{
+    partial class CCDMatchForm
+    {
+        /// <summary>
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CCDMatchForm));
+            this.pictureBox_Image = new System.Windows.Forms.PictureBox();
+            this.btn_Save = new ECInspect.ImageButton();
+            this.label5 = new System.Windows.Forms.Label();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).BeginInit();
+            this.splitContainer.Panel1.SuspendLayout();
+            this.splitContainer.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox_Image)).BeginInit();
+            this.SuspendLayout();
+            // 
+            // splitContainer
+            // 
+            // 
+            // splitContainer.Panel1
+            // 
+            this.splitContainer.Panel1.Controls.Add(this.label5);
+            this.splitContainer.Panel1.Controls.Add(this.btn_Save);
+            this.splitContainer.Panel1.Controls.Add(this.pictureBox_Image);
+            // 
+            // pictureBox_Image
+            // 
+            this.pictureBox_Image.Location = new System.Drawing.Point(132, 12);
+            this.pictureBox_Image.Name = "pictureBox_Image";
+            this.pictureBox_Image.Size = new System.Drawing.Size(1184, 900);
+            this.pictureBox_Image.TabIndex = 0;
+            this.pictureBox_Image.TabStop = false;
+            this.pictureBox_Image.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pictureBox_Image_MouseDown);
+            this.pictureBox_Image.MouseMove += new System.Windows.Forms.MouseEventHandler(this.pictureBox_Image_MouseMove);
+            this.pictureBox_Image.MouseUp += new System.Windows.Forms.MouseEventHandler(this.pictureBox_Image_MouseUp);
+            // 
+            // btn_Save
+            // 
+            this.btn_Save.Font = new System.Drawing.Font("Microsoft YaHei", 36F, System.Drawing.FontStyle.Bold);
+            this.btn_Save.Location = new System.Drawing.Point(1486, 792);
+            this.btn_Save.Name = "btn_Save";
+            this.btn_Save.Size = new System.Drawing.Size(280, 120);
+            this.btn_Save.TabIndex = 1;
+            this.btn_Save.Text = "保存";
+            this.btn_Save.UseVisualStyleBackColor = true;
+            this.btn_Save.Click += new System.EventHandler(this.btn_Save_Click);
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Font = new System.Drawing.Font("Microsoft YaHei", 36F, System.Drawing.FontStyle.Bold);
+            this.label5.Location = new System.Drawing.Point(1400, 245);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(453, 128);
+            this.label5.TabIndex = 2;
+            this.label5.Text = "操作步骤：\r\n拖拽绘制ROI小框！";
+            this.label5.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // CCDMatchForm
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(1920, 1080);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.Location = new System.Drawing.Point(0, 0);
+            this.Name = "CCDMatchForm";
+            this.Text = "CCDMatchForm";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.CCDMatchForm_FormClosed);
+            this.Load += new System.EventHandler(this.CCDMatchForm_Load);
+            this.splitContainer.Panel1.ResumeLayout(false);
+            this.splitContainer.Panel1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).EndInit();
+            this.splitContainer.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox_Image)).EndInit();
+            this.ResumeLayout(false);
+
+        }
+
+        #endregion
+
+        private ImageButton btn_Save;
+        private System.Windows.Forms.PictureBox pictureBox_Image;
+        private System.Windows.Forms.Label label5;
+    }
+}

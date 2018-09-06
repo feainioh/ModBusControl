@@ -1,0 +1,3 @@
+仅用于还原，避免修改Mark点坐标
+
+XCOPY /r/y $(ProjectDir)Config\SANTEC.ini $(TargetDir)Config

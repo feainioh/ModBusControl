@@ -1,0 +1,331 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using ModbusDll;
+using System.IO.Ports;
+using System.Threading;
+using System.Collections.Concurrent;
+
+namespace ECInspect
+{
+    abstract class ModbusValue
+    {
+        #region 值
+        /// <summary>
+        /// 线圈
+        /// </summary>
+        internal AllCoil Coils = new AllCoil();
+        /// <summary>
+        /// 保持寄存器
+        /// </summary>
+        internal AllHoldingRegister HoldingRegisters = new AllHoldingRegister();   
+
+        #endregion
+        
+        protected void SetBitDataValue()
+        { }
+
+        private void setbitdatavalue(int Index,bool Value)
+        { 
+        
+        }
+
+        protected void SetHoldingValue()
+        { }
+    }
+
+    /// <summary>
+    /// 主Modbus
+    /// </summary>
+    partial class CModbus : ModbusValue
+    {
+        private Modbus m_Modbus = null;
+        private byte m_SlaveID = 1;
+
+        /// <summary>
+        /// 待发送消息队列【线程安全】
+        /// </summary>
+        private ConcurrentQueue<InputModule> MsgList = new ConcurrentQueue<InputModule>();
+
+        private bool m_CommRun = false;
+        /// <summary>
+        /// 通讯是否正常运行
+        /// </summary>
+        internal bool CommRun { get { return m_CommRun; } }
+
+        public delegate void dele_MessageText(string str, Modbus.emMsgType MsgType);//显示消息的委托
+        public event dele_MessageText event_MessageText;
+
+        private Logs log = Logs.LogsT();
+
+        internal CModbus() { }
+        internal CModbus(string PortName)
+        {
+            try
+            {
+                m_Modbus = new Modbus(PortName, 115200, 8, Parity.None, StopBits.One);
+
+                Thread thd = new Thread(Thd_PollMsg);
+                thd.IsBackground = true;
+                thd.Name = "Modbus轮询消息";
+                thd.Start();
+
+                m_Modbus.event_MessageText += new Modbus.dele_MessageText(m_Modbus_event_MessageText);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Modbus初始化失败:" + ex.Message);
+                //MsgBox box = new MsgBox();
+                //box.Title = "Modbus初始化失败";
+                //box.ShowText = ex.Message;
+                //box.ShowDialog();
+            }
+        }
+
+        private void m_Modbus_event_MessageText(string str, Modbus.emMsgType nMsgType)
+        {
+            //Console.WriteLine(nMsgType.ToString() + "\t" + str);
+            //后续可以屏蔽，避免日志过多
+            //log.AddCommLOG(nMsgType.ToString() + "\t" + str);
+
+            if (this.event_MessageText != null) this.event_MessageText(str, nMsgType);
+        }
+
+        private object WaitSync = new object();//是否有同步消息需要发送
+
+        private void Thd_PollMsg()
+        {
+            int FirstErr = 0;
+            Thread.Sleep(10);
+            DateTime LastQuery = DateTime.Now;//记录上次轮询时间，避免长时间不轮询
+            while (!GlobalVar.SoftWareShutDown)
+            {
+                try
+                {
+                    lock (WaitSync)
+                    {
+                        if (MsgList.Count == 0 ||
+                            (MsgList.Count > 1 && (DateTime.Now - LastQuery).TotalMilliseconds > 500))
+                        {
+                            Query();//轮询查询
+                            LastQuery = DateTime.Now;
+                        }
+                        else if (MsgList.Count > 0)
+                        {
+                            InputModule msg;
+                            if (MsgList.TryDequeue(out msg))
+                            {
+                                SendListMsg(msg);//发送队列消息
+                            }
+                            else throw new Exception("当前的取值不成功，队列长度:" + MsgList.Count);
+                        }
+                        FirstErr = 0;
+                        m_CommRun = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    m_CommRun = false;
+                    if (FirstErr++ > 1)
+                    {
+                        GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Mode, GlobalVar.RunningMode == RunMode.Normal ? true : false);
+                        if (GlobalVar.CCDEnable) GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.CCDUse, true);//通知PLC 相机使用
+                        else GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.CCDUse, false);//通知PLC 相机不使用
+                    }
+                    log.AddERRORLOG(string.Format("轮询异常:{0}\r\n{1}", ex.Message, ex.StackTrace));
+                    Reset();
+                    Thread.Sleep(1000);//异常后暂停一秒
+                }
+                finally
+                {
+                    Thread.Sleep(40);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 断线后 复位线圈
+        /// </summary>
+        private void Reset()
+        { 
+            /*********与PLC通讯断开时，复位以下线圈***********/
+            this.Coils.StartLeft.Value = false;
+            this.Coils.StartRight.Value = false;
+        }
+
+        /// <summary>
+        /// 等待
+        /// </summary>
+        /// <param name="MillSecond"></param>
+        private void Sleep(int MillSecond)
+        {
+            Thread.Sleep(MillSecond);
+            if (GlobalVar.SystemReset) throw new Exception("系统复位");
+        }
+
+        
+
+        /// <summary>
+        /// 轮询 所有的值，并写入当前modbus中
+        /// </summary>
+        private void Query()
+        {
+            ReadAllCoil(this.Coils.Count);//读取所有的线圈
+            int index = this.HoldingRegisters.AxisY_PhotoLocation.Index;//第124个保持寄存器
+            index += 2;
+            ReadALlHoldingRegister(index);//读取所有的寄存器【前124个】
+            ReadALlHoldingRegister(HoldingRegister.TotalLength - this.HoldingRegisters.AxisY_PhotoLocation.Index, index);//读取所有的寄存器【125+】
+        }
+
+        /// <summary>
+        /// 读取所有的线圈
+        /// </summary>
+        /// <param name="Length">在使用的线圈的总长度</param>
+        private void ReadAllCoil(int Length = 10)
+        {
+            InputModule input = new InputModule();
+            input.bySlaveID = m_SlaveID;
+            input.byFunction = Modbus.byREAD_COIL;
+            input.nStartAddr = Coil.PLCStartAddr;
+            input.nDataLength = Length;
+
+            OutputModule rev = m_Modbus.SendMessage_Sync(input);
+            if ((rev == null) || (rev.byFunction != input.byFunction))
+            {
+                throw new Exception("通信异常,读取所有所有线圈失败！");
+            }
+
+            int rev_DataLength =rev.byRecvData[2];//读取到的数据长度
+            string binary = string.Empty; ;
+            for (int i = 0; i < rev_DataLength; i++)
+            {
+                int Decimal = rev.byRecvData[3+i];//已经为十进制
+                string temp= Convert.ToString(Decimal, 2).PadLeft(8, '0');//十进制转二进制 
+                binary += myFunction.StrReverse(temp);
+            }
+
+            this.Coils.SetBitDatasValue(binary);//直接修改线圈的值
+        }
+
+        /// <summary>
+        /// 读取所有的保持寄存器
+        /// </summary>
+        /// <param name="Length">在使用的保持寄存器的总长度</param>
+        /// <param name="Plusddr">起始地址加上的地址</param>
+        private void ReadALlHoldingRegister(int Length = 10,int Plusddr = 0)
+        {
+            if (Length < 1 || Length > HoldingRegister.MAXLength) throw new Exception("读取保持寄存器寄存器 长度超出范围");
+
+            InputModule input = new InputModule();
+            input.bySlaveID = m_SlaveID;
+            input.byFunction = Modbus.byREAD_HOLDING_REG;
+            input.nStartAddr = HoldingRegister.PLCStartAddr + Plusddr;
+            input.nDataLength = Length;;
+
+            OutputModule rev = m_Modbus.SendMessage_Sync(input);
+
+            if ((rev == null) || (rev.byFunction != input.byFunction))
+            {
+                throw new Exception("通讯异常，读取所有保持寄存器失败！" + Plusddr);
+            }
+            
+            //本软件 保持寄存器的数组，读取时转换
+            this.HoldingRegisters.SetRegisterArray(rev.byRecvData, Plusddr);
+        }
+
+        /// <summary>
+        /// 发送线圈消息-同步
+        /// </summary>
+        /// <param name="coil">线圈</param>
+        /// <param name="Press">是否按下 值【0:False;1:True】</param>
+        internal bool CoilMsgSync(Coil coil, bool Press)
+        {
+            lock (WaitSync)
+            {
+                try
+                {
+                    InputModule input = new InputModule();
+                    input.bySlaveID = m_SlaveID;
+                    input.byFunction = Modbus.byWRITE_SINGLE_COIL;
+                    input.nStartAddr = coil.Addr;
+                    input.nDataLength = Coil.Size;
+                    input.byWriteData = new byte[] { Press ? (byte)255 : (byte)0, 0x00 };
+
+                    return SendListMsg(input);
+                }
+                catch (Exception ex)
+                {
+                    log.AddERRORLOG("同步消息发送异常:" + ex.Message);
+                    return false;
+                }
+                finally
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// 增加消息队列
+        /// </summary>
+        /// <param name="input">待发送消息</param>
+        internal void AddMsgList(InputModule input)
+        {
+            input.bySlaveID = m_SlaveID;
+
+            MsgList.Enqueue(input);
+        }
+
+        /// <summary>
+        /// 修改单个线圈的值
+        /// </summary>
+        /// <param name="coil">线圈</param>
+        /// <param name="Press">是否按下 值【0:False;1:True】</param>
+        internal void AddMsgList(Coil coil, bool Press)
+        {
+            if (coil.Value == Press) return;//相等则不修改
+
+            InputModule input = new InputModule();
+            input.byFunction = Modbus.byWRITE_SINGLE_COIL;
+            input.nStartAddr = coil.Addr;
+            input.nDataLength = Coil.Size;
+            input.byWriteData = new byte[] { Press ? (byte)255 : (byte)0, 0x00 };
+
+            AddMsgList(input);
+        }
+
+        /// <summary>
+        /// 修改单个保持寄存器的值
+        /// </summary>
+        /// <param name="register">保持寄存器</param>
+        /// <param name="Value">修改的值（包含小数的值，将数值*100后写入）</param>
+        internal void AddMsgList(HoldingRegister register, int Value)
+        {
+            InputModule input = new InputModule();
+            input.nStartAddr = register.Addr;
+            input.nDataLength = register.Size;
+            if (register.Size > 1)
+            {
+                input.byFunction = Modbus.byWRITE_MULTI_HOLDING_REG;
+                input.byWriteData = ModbusTool.HostToNetOrder32(Value);
+            }
+            else
+            {
+                input.byFunction = Modbus.byWRITE_SINGLE_HOLDING_REG;
+                input.byWriteData = ModbusTool.HostToNetOrder16((short)Value);
+            }
+
+            AddMsgList(input);
+        }
+
+        private bool SendListMsg(InputModule input)
+        {
+            OutputModule rev = m_Modbus.SendMessage_Sync(input);
+            if ((rev == null) || (rev.byFunction != input.byFunction))
+            {
+                throw new Exception("发送消息队列 通信异常！");
+            }
+            else return true;
+        }
+    }
+}

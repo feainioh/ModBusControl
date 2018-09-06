@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Root>
+  <PLCErr>
+    <ErrIndex0 Index="0" ErrStr="下压气缸下限超时"/>
+    <ErrIndex1 Index="1" ErrStr="下压气缸上限超时" />
+    <ErrIndex2 Index="2" ErrStr="打点气缸下限超时" />
+    <ErrIndex3 Index="3" ErrStr="打点气缸上限超时" />
+    <ErrIndex4 Index="4" ErrStr="左托料气缸下限超时" />
+    <ErrIndex5 Index="5" ErrStr="左托料气缸上限超时" />
+    <ErrIndex6 Index="6" ErrStr="搬运气缸左限位超时" />
+    <ErrIndex7 Index="7" ErrStr="搬运气缸右限位超时" />
+    <ErrIndex8 Index="8" ErrStr="上下夹取气缸下限超时" />
+    <ErrIndex9 Index="9" ErrStr="上下夹取气缸上限超时" />
+    <ErrIndex10 Index="10" ErrStr="前后夹取气缸内限超时" />
+    <ErrIndex11 Index="11" ErrStr="前后夹取气缸外限超时" />
+    <ErrIndex12 Index="12" ErrStr="左右夹取气缸内限超时" />
+    <ErrIndex13 Index="13" ErrStr="左右夹取气缸外限超时" />
+    <ErrIndex14 Index="14" ErrStr="吸取气缸下限超时" />
+    <ErrIndex15 Index="15" ErrStr="吸取气缸上限超时" />
+    <ErrIndex16 Index="16" ErrStr="真空吸取异常" />
+    <ErrIndex17 Index="17" ErrStr="打点轴伺服报警发生" />
+    <ErrIndex18 Index="18" ErrStr="Y轴伺服报警发生" />
+    <ErrIndex19 Index="19" ErrStr="打点轴超极限" />
+    <ErrIndex20 Index="20" ErrStr="Y轴超极限" />
+    <ErrIndex21 Index="21" ErrStr="测试超时" />
+    <ErrIndex22 Index="22" ErrStr="出料异常" />
+    <ErrIndex23 Index="23" ErrStr="隔离销不在位置" />
+    <ErrIndex24 Index="24" ErrStr="急停按下-段取" />
+    <ErrIndex25 Index="25" ErrStr="旋转气缸内限超时" />
+    <ErrIndex26 Index="26" ErrStr="旋转气缸外限超时" />
+    <ErrIndex27 Index="27" ErrStr="右托料气缸下限超时" />
+    <ErrIndex28 Index="28" ErrStr="右托料气缸上限超时" />
+    <ErrIndex29 Index="29" ErrStr="压平气缸上限超时" />
+    <ErrIndex30 Index="30" ErrStr="压平气缸下限超时" />
+    <ErrIndex31 Index="31" ErrStr="相机气缸上限超时" />
+    <ErrIndex32 Index="32" ErrStr="相机气缸下限超时" />
+    <ErrIndex33 Index="33" ErrStr="X轴伺服报警" />
+    <ErrIndex34 Index="34" ErrStr="X轴超极限" />
+    <ErrIndex35 Index="35" ErrStr="搬运轴驱动报警" />
+    <ErrIndex36 Index="36" ErrStr="搬运轴超极限" />
+    <ErrIndex37 Index="37" ErrStr="门禁异常" />
+    <ErrIndex38 Index="38" ErrStr="Y轴坐标异常" />
+    <ErrIndex39 Index="39" ErrStr="X轴坐标异常" />
+    <ErrIndex40 Index="40" ErrStr="下治具上限异常" />
+    <ErrIndex41 Index="41" ErrStr="下治具下限异常" />
+    <ErrIndex42 Index="42" ErrStr="下治具未锁紧" />
+    <ErrIndex43 Index="43" ErrStr="相机轴超极限" />
+	
+	
+  </PLCErr>
+</Root>

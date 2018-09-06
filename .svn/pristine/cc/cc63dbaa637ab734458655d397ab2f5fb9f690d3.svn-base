@@ -1,0 +1,699 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.ComponentModel;
+using System.Threading;
+using System.Net.NetworkInformation;
+using System.Windows.Forms;
+using System.Xml;
+using System.IO;
+using System.Net;
+using System.Data.SqlClient;
+using System.Data;
+using System.Diagnostics;
+
+namespace ECInspect
+{
+    /// <summary>
+    /// IIS升级模块
+    /// </summary>
+    public class IISUpdate
+    {
+        #region 数据库  更新部分
+        /// <summary>
+        /// 数据库名称
+        /// </summary>
+        private const string DataBaseName = "192.168.208.207";//"suzsqlv01";//优先从数据库获取新版本，如果无法连接数据库，则从上位机下载（如果上位机可用）
+        private readonly String UpdataBase = string.Format("Data Source={0};database=BASEDATA;uid=suzmektec;pwd=suzmek;Connect Timeout=2",DataBaseName);
+        public String Name = "";
+        #endregion
+
+        /// <summary>
+        /// 上位机服务器Http地址
+        /// </summary>
+        internal readonly string RemoteHttp_IPAddr = "100.100.1.2";//100.100.1.2为局域网上位机
+        /// <summary>
+        /// 服务器网址
+        /// </summary>
+        private string IIS_Url = string.Empty;
+        /// <summary>
+        /// 当前程序运行的路径，用以拷贝升级程序到此文件夹
+        /// </summary>
+        private string ApplicationRunPath = string.Empty;
+        /// <summary>
+        /// 升级完后运行的程序
+        /// </summary>
+        private string RunExe = string.Empty;
+        /// <summary>
+        /// 下载升级文件临时存放地
+        /// </summary>
+        private string UpdateTempFile = string.Empty;
+        /// <summary>
+        /// 备份当前程序的文件夹
+        /// </summary>
+        private string BackupFile = string.Empty;
+        /// <summary>
+        /// 当前程序运行的版本
+        /// </summary>
+        public int Current_Ver = 1;
+        /// <summary>
+        /// 已经下载到本机的版本
+        /// </summary>
+        public int Download_Ver = 1;
+        /// <summary>
+        /// 服务器上存放的版本(服务器未启用时，使用默认值1)
+        /// </summary>
+        public int Server_Ver = 1;
+
+        /// <summary>
+        /// 是否需要升级，如果有新版本，回复HOST的THU
+        /// </summary>
+        public bool NeedUpdate
+        {
+            get 
+            {
+                if (Download_Ver != 1)
+                {
+                    if (Download_Ver != Current_Ver) return true;
+                    else return false;
+                }
+                else return false;
+            }
+        }
+        /// <summary>
+        /// 是否运行检测服务器版本线程
+        /// </summary>
+        private bool CheckVerRun = false;
+        /// <summary>
+        /// 当前窗口弹窗的标题
+        /// </summary>
+        private string MsgTitle = "服务器更新";
+        /// <summary>
+        /// 异步下载完成
+        /// </summary>
+        private AutoResetEvent Downloadcompleted = new AutoResetEvent(false);
+
+        /// <summary>
+        /// 显示字符串
+        /// </summary>
+        /// <param name="msg"></param>
+        public delegate void dele_ShowStr(string msg);
+        public event dele_ShowStr EventShowStr;
+
+        private Logs log = Logs.LogsT();
+
+        #region XML文档模块
+        /// <summary>
+        /// 字符串"update"
+        /// </summary>
+        string _Update = "update";
+        /// <summary>
+        /// 字符串"Version"
+        /// </summary>
+        string _Version = "Version";
+        /// <summary>
+        ///  字符串"_File"
+        /// </summary>
+        string _File = "File";
+        List<XmlNode> list_XN = new List<XmlNode>();//读取到File下的所有节点值
+        #endregion
+
+        private IISUpdate()
+        {
+            throw new Exception("构造函数的当前运行路径为空");   
+        }
+
+        /// <summary>
+        /// 升级模块构造函数
+        /// </summary>
+        /// <param name="applicationrunpath">当前程序运行的路径</param>
+        public IISUpdate(string applicationrunpath)
+        {
+            this.ApplicationRunPath = applicationrunpath;
+            this.CheckVerRun = true;
+
+            this.IIS_Url = string.Format("http://{0}/A5X/A5Xupdate.xml", RemoteHttp_IPAddr);
+            this.UpdateTempFile = "temp";
+            this.BackupFile = "backup";
+
+            InitIIS();
+        }
+
+        /// <summary>
+        /// 升级模块构造函数
+        /// </summary>
+        /// <param name="applicationrunpath">当前程序运行的路径</param>
+        /// <param name="ServerIP">获取版本信息的IIS服务器</param>
+        public IISUpdate(string applicationrunpath, IPAddress ServerIP)
+        {
+            this.ApplicationRunPath = applicationrunpath;
+            this.CheckVerRun = true;
+
+            #region 暂时使用集创的服务器升级--调试
+            //RemoteHttp_IPAddr = GetHttpPathFromDataBase();            
+            //RemoteHttp_IPAddr = string.IsNullOrEmpty(RemoteHttp_IPAddr) ? ServerIP.ToString() : RemoteHttp_IPAddr;
+            #endregion
+            RemoteHttp_IPAddr = ServerIP.ToString();
+            Console.WriteLine("远程服务器:{0}", RemoteHttp_IPAddr);
+
+            this.IIS_Url = string.Format("http://{0}/SoftUpdate/EC-CCD/Update.xml", RemoteHttp_IPAddr);
+            this.UpdateTempFile = "temp";
+            this.BackupFile = "backup";
+
+            InitIIS();
+        }
+
+        /// <summary>
+        /// 升级模块构造函数
+        /// </summary>
+        /// <param name="applicationrunpath">当前程序运行的路径</param>
+        /// <param name="downloadfile">下载文件临时存放地（文件存放在当前运行程序的同级目录）</param>
+        public IISUpdate(string applicationrunpath,string downloadfile)
+        {
+            this.ApplicationRunPath = applicationrunpath;
+            this.CheckVerRun = true;
+
+            this.IIS_Url = string.Format("http://{0}/A5X/A5Xupdate.xml", RemoteHttp_IPAddr);
+            this.UpdateTempFile = downloadfile;
+            this.BackupFile = "backup";
+
+            InitIIS();
+        }
+
+        /// <summary>
+        /// 升级模块构造函数
+        /// </summary>
+        /// <param name="applicationrunpath">当前程序运行的路径</param>
+        /// <param name="downloadfile">下载文件临时存放地（文件存放在当前运行程序的同级目录）</param>
+        /// <param name="backupfile">当前程序备份（文件存放在当前运行程序的同级目录）</param>
+        public IISUpdate(string applicationrunpath, string downloadfile,string backupfile)
+        {
+            this.ApplicationRunPath = applicationrunpath;
+            this.CheckVerRun = true;
+
+            this.IIS_Url = string.Format("http://{0}/A5X/A5Xupdate.xml", RemoteHttp_IPAddr);
+            this.UpdateTempFile = downloadfile;
+            this.BackupFile = backupfile;
+
+            InitIIS();
+        }
+
+        /// <summary>
+        /// 初始化
+        /// </summary>
+        private void InitIIS()
+        {
+            myFunction myfunction = new myFunction();
+            this.Current_Ver = GetVerInt(myfunction.GetVersion());
+
+            Thread m_CheckVer = new Thread(Thread_CheckVer);
+            m_CheckVer.IsBackground = true;
+            m_CheckVer.Name = "检查服务器是否有新版本";
+            m_CheckVer.Start();
+        }
+
+        private void Thread_CheckVer()
+        {
+            if (ApplicationRunPath == string.Empty) 
+            {
+#if DEBUG
+                MessageBox.Show("服务器更新 路径为空");
+#endif
+                Console.WriteLine("服务器更新 路径为空");
+                return;
+            }
+            int Interval = 15;//时间间隔，单位秒
+            Interval *= 1000;//毫秒
+            while (CheckVerRun)
+            {
+                try
+                {
+                    if (!Ping(RemoteHttp_IPAddr))
+                    {
+                        Thread.Sleep(Interval);
+                        continue;
+                    }
+                    Dictionary<string, string> Path;
+                    if (CheckVersion(out Path))
+                    {
+                        //Console.WriteLine(string.Format("{0}\t需要下载", DateTime.Now.ToString("HH:mm:ss:fff")));
+                        Download(Path, ApplicationRunPath);
+                    }
+                    else
+                    {
+                        //Console.WriteLine(string.Format("{0}\t不需要下载", DateTime.Now.ToString("HH:mm:ss:fff")));
+                        continue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.AddERRORLOG("升级模块异常：" + ex.Message + "\r\n" + ex.StackTrace);
+                }
+                finally
+                {
+                    Thread.Sleep(Interval);
+                }
+            }
+        }
+
+        private bool Ping(string str)
+        {
+            try
+            {
+                Ping ping = new Ping();
+                PingReply pingReply = ping.Send(str, 1000);
+                bool reply = false;
+                if (pingReply.Status == IPStatus.Success) reply = true;
+                //Console.WriteLine(string.Format("{2}\t服务器更新 Ping {0}\t{1}", str, reply ? "成功" : "失败", DateTime.Now.ToString("HH:mm:ss:fff")));
+                return reply;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("{2}\t{1} PING异常:{0}", ex.Message, MsgTitle, DateTime.Now.ToString("HH:mm:ss:fff")));
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 从服务器获取Http路径
+        /// </summary>
+        /// <returns></returns>
+        private string GetHttpPathFromDataBase()
+        {
+            string strFullPath = Application.ExecutablePath;
+            string AppName = System.IO.Path.GetFileName(strFullPath);//软件名称
+
+            String Sql = "SELECT Version,HttpPath FROM ProgramVersion where GroupName='RemoteIIS'";
+            SqlConnection con = new SqlConnection(UpdataBase);
+            SqlDataReader reader = null;
+            String httppath = string.Empty;
+            try
+            {
+                OpenDataBase(con, 5);
+                SqlCommand com = new SqlCommand(Sql, con);
+                reader = com.ExecuteReader();
+                if (reader.Read())
+                {
+                    httppath = reader.GetValue(1).ToString();
+                }
+                reader.Close();
+                con.Close();
+            }
+            catch (Exception ex)
+            {
+                log.AddERRORLOG("连接数据库失败，请确认网络是否连接:" + ex.Message + "不能出现此日志！！！");
+                if (reader != null)
+                    reader.Close();
+                con.Close();
+            }
+            return httppath;
+        }
+
+        /// <summary>
+        /// 用线程的方式执行SqlConnection.Open()
+        /// </summary>
+        /// <param name="conn"></param>
+        /// <param name="Timeout">设置超时的时间，单位为（秒），默认1秒，支持小数位的秒。</param>
+        public void OpenDataBase(SqlConnection conn, double Timeout = 1.0)
+        {
+            bool successed = false;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    if (ConnectionState.Open == conn.State)
+                    {
+                        successed = true;
+                    }
+                    else
+                    {
+                        conn.Open();
+                        successed = true;
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    //throw ex;
+                }
+                catch (ThreadAbortException)
+                {
+                }
+                catch (InvalidOperationException)
+                {
+                }
+                catch (Exception)
+                {
+                }
+            });
+            thread.IsBackground = true;
+            Stopwatch sw = Stopwatch.StartNew();
+            thread.Start();
+            TimeSpan timeout = TimeSpan.FromSeconds(Timeout);
+            DateTime beg = DateTime.Now;
+            while (sw.Elapsed < timeout)
+            {
+                if (successed) break;
+                thread.Join(TimeSpan.FromMilliseconds(20));
+            }
+
+            sw.Stop();
+            if (!successed)
+            {
+                throw new TimeoutException("超时无法连接.");
+            }
+        }         
+
+        /// <summary>
+        /// 检查版本是否为最新版本
+        /// </summary>
+        /// <param name="DownloadPath_Name">下载文件路径 文件名</param>
+        /// <returns></returns>
+        public bool CheckVersion(out Dictionary<string,string> DownloadPath_Name)
+        {
+            bool NewVersion = false; 
+            DownloadPath_Name = new Dictionary<string,string>();
+            try
+            {
+                OpXML xml = new OpXML();
+                list_XN = OpXML.GetChildNodes(IIS_Url, _Version);
+                foreach (XmlNode node in list_XN)
+                {
+                    this.Server_Ver = GetVerInt(node.Value);
+                    //Console.WriteLine(string.Format("{0}\t服务器版本:{1}\t已经下载版本:{2}\t当前版本:{3}", 
+                    //    DateTime.Now.ToString("HH:mm:ss:fff"),
+                    //    this.Server_Ver,
+                    //    this.Download_Ver,
+                    //    this.Current_Ver));
+                }
+                list_XN = OpXML.GetChildNodes(IIS_Url,_Update);
+                foreach (XmlNode node in list_XN)
+                {
+                    if (node.Name != _File) continue;
+                    string webpath, filename;
+                    if (GetUpdateInf(node, out webpath, out filename)) DownloadPath_Name.Add(webpath, filename);
+                }
+            }
+            catch (Exception ex)
+            {
+#if DEBUG
+                MessageBox.Show(string.Format("检查版本:{0}", ex.Message),MsgTitle);
+#endif
+                Console.WriteLine(string.Format("{1} 检查版本:{0}", ex.Message, MsgTitle));
+            }
+            //以网络的版本比对当前运行的版本，及下载的版本
+            if (this.Server_Ver != this.Current_Ver && this.Server_Ver != this.Download_Ver) NewVersion = true;
+            return NewVersion;
+        }
+        
+        /// <summary>
+        /// 判断该节点下的子节点是否符合（下载网址，名称）
+        /// </summary>
+        /// <param name="node">父节点</param>
+        /// <param name="path">网址</param>
+        /// <param name="name">名称</param>
+        /// <returns></returns>
+        private bool GetUpdateInf(XmlNode node, out string path, out string filename)
+        {
+            path = string.Empty;
+            filename = string.Empty;
+            if (node.ChildNodes.Count == 2)
+            {
+                XmlNodeList child= node.ChildNodes;
+                XmlNode item1 = child.Item(0);//默认情况，第一个为路径
+                XmlNode item2 = child.Item(1);//默认情况，第二个为名称
+                if (item1.Name == "Url" && item2.Name == "FileName")
+                {
+                    path = item1.InnerXml;
+                    filename = item2.InnerXml;
+                    return true;
+                }
+                else if (item2.Name == "Url" && item1.Name == "FileName")
+                {
+                    path = item2.InnerXml;
+                    filename = item1.InnerXml;
+                    return true;
+                }
+                else return false;
+            }
+            else return false;
+        }
+
+        /// <summary>
+        /// 备份文件(只保留近十个文件)
+        /// </summary>
+        /// <param name="FileName">需要备份的文件</param>
+        private void BackupFiles(List<string> FileName)
+        {
+            if (!Directory.Exists(BackupFile))
+            {
+                Directory.CreateDirectory(BackupFile);
+            }            
+
+            Dictionary<string, DateTime> File_CreateTime = new Dictionary<string, DateTime>();
+            string[] dirs = Directory.GetDirectories(BackupFile);//获取子文件夹
+            foreach (string dir in dirs)
+            {
+                File_CreateTime.Add(dir,File.GetCreationTime(dir));
+            }
+            var dicSort = from objDic in File_CreateTime orderby objDic.Value descending select objDic;//Dictonary排序（降序） 如果需要升序  descending 去掉即可
+            int FilesCount = 10;
+            foreach (KeyValuePair<string, DateTime> kvp in dicSort)
+            {
+                if (--FilesCount < 0) Directory.Delete(kvp.Key,true);
+            }
+
+            myFunction myfunction = new myFunction();
+            string savepath = myfunction.GetVersion();
+            string createfloder = CreateFolder(BackupFile+@"\",savepath);
+            while (FileName.Count > 0)
+            {
+                try
+                {
+                    string file = FileName[0];
+                    if (!File.Exists(file))
+                    {
+                        FileName.RemoveAt(0);
+                        continue;
+                    }
+                    File.Copy(file, createfloder + @"\" + file);
+                    FileName.RemoveAt(0);
+                }
+                catch (Exception ex)
+                { }
+            }
+        }
+
+        /// <summary>
+        /// 创建文件夹
+        /// </summary>
+        /// <param name="path">创建的文件夹的路径(包含\)</param>
+        /// <param name="FolderName">希望文件夹名称</param>
+        /// <returns>实际创建的文件夹名称</returns>
+        private string CreateFolder(string path,string FolderName)
+        {
+            string foldername = path+FolderName;
+            string[] dirs = Directory.GetDirectories(path);//获取子文件夹
+            List<string> folder = new List<string>();
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                if (dirs[i].IndexOf(FolderName) > 0) folder.Add(dirs[i]);
+            }
+            int BigNum = 0;
+            while (folder.Count > 0)
+            {
+                try
+                {
+                    int num = 0;
+                    if (folder[0].IndexOf("_") > 0) num = Convert.ToInt16(folder[0].Substring(folder[0].IndexOf("_")+1));
+                    BigNum = num > BigNum ? num : BigNum;
+                    folder.RemoveAt(0);
+                }
+                catch (Exception ex) { }
+            }                
+            if (BigNum == 0 && !Directory.Exists(path+FolderName))Directory.CreateDirectory(path+FolderName);
+            else foldername = CreateFolder(path, FolderName + "_" + (++BigNum)); 
+
+            return foldername;
+        }
+
+        /// <summary>
+        /// 下载文件
+        /// </summary>
+        /// <param name="WebUrlPath_Name">下载文件路径 文件名</param>
+        /// <param name="Destination">保存文件夹名称</param>
+        /// <returns></returns>
+        public void Download(Dictionary<string,string> WebUrlPath_Name,string Destination)
+        {
+            bool isSuccess = true;//是否下载成功
+
+            if (Directory.Exists(UpdateTempFile))
+            {
+                Directory.Delete(UpdateTempFile, true);
+            }
+            Directory.CreateDirectory(UpdateTempFile);
+
+            List<string> backFile = new List<string>();
+            foreach (KeyValuePair<string,string> sub in WebUrlPath_Name)
+            {
+                backFile.Add(sub.Value);
+                if (!Download(sub.Key, sub.Value)) 
+                {
+                    ShowStr(sub.Value + "\t下载失败");
+                    isSuccess = false;
+                }
+                else ShowStr(sub.Value + "\t下载成功");
+            }
+            if (isSuccess)
+            {
+                ShowStr("下载成功，开始备份");
+                AutoResetEvent BackupFile = new AutoResetEvent(false);
+                Thread Thd_Back = new Thread(new ThreadStart(delegate { 
+                    BackupFiles(backFile);
+                    BackupFile.Set();
+                }));
+                Thd_Back.IsBackground = true;
+                Thd_Back.Start();
+
+                if (!BackupFile.WaitOne(10 * 1000))
+                {
+                    ShowStr("备份文件超时");
+                    Thread.Sleep(2000);
+                }
+
+                this.Download_Ver = this.Server_Ver;
+                //myFunction.SendMessage(GlobalVar.gl_IntPtr_MainWindow, GlobalVar.WM_PCNeedUpdate, (IntPtr)0, (IntPtr)0);
+                ShowStr("下载版本:" + this.Download_Ver);
+            }
+        }
+
+        /// <summary>
+        /// 下载
+        /// </summary>
+        /// <param name="WebUrl">远程路径</param>
+        /// <param name="SaveName">保存的名称</param>
+        /// <returns></returns>
+        private bool Download(string WebUrl,string SaveName)
+        {
+            WebClient wc = new WebClient();
+            try
+            {
+                ShowStr(string.Format("下载开始:{0}\t文件大小:{1}", SaveName, GetLength(WebUrl)));
+                
+                //调试
+                if (!Directory.Exists(UpdateTempFile))
+                {
+                    return false;
+                }
+
+                string DownFileName = UpdateTempFile + @"\" + SaveName.TrimStart('\\');//下载到本地的文件
+                if (!Directory.Exists(Path.GetDirectoryName(DownFileName))) Directory.CreateDirectory(Path.GetDirectoryName(DownFileName));
+
+                #region 同步下载
+                wc.DownloadFile(WebUrl, DownFileName);//同步下载
+                Console.WriteLine(string.Format("{0}\t{1} 下载结束", DateTime.Now.ToString("HH:mm:ss:fff"), SaveName));
+                wc.Dispose();
+                #endregion
+
+                #region 异步下载
+                //wc.DownloadFileAsync(new Uri(WebUrl), file + @"\" + savePath);//异步下载
+                //wc.DownloadProgressChanged += new System.Net.DownloadProgressChangedEventHandler(wc_DownloadProgressChanged);
+                //wc.DownloadFileCompleted += new AsyncCompletedEventHandler(wc_DownloadFileCompleted);
+                //Downloadcompleted.WaitOne();//等待异步下载完成
+                #endregion
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ShowStr(string.Format("下载异常：{0}", ex.Message));
+                wc.Dispose();
+                return false;
+            }
+        }
+
+        private void wc_DownloadFileCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            Downloadcompleted.Set();
+            ShowStr(string.Format("下载结束"));
+        }
+
+        private void wc_DownloadProgressChanged(object sender, System.Net.DownloadProgressChangedEventArgs e)
+        {
+            Action<System.Net.DownloadProgressChangedEventArgs> OnChange = ProceChange;
+            OnChange.Invoke(e);
+        }
+
+        private void ProceChange(System.Net.DownloadProgressChangedEventArgs e)
+        {
+            Console.WriteLine("百分比:" + e.ProgressPercentage + "%");
+            //progressBar1.Value = e.ProgressPercentage;
+        }
+
+        private long GetLength(string uri)
+        {
+            System.Net.HttpWebRequest req = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(uri);
+            System.Net.HttpWebResponse res = (System.Net.HttpWebResponse)req.GetResponse();
+            long len = res.ContentLength;
+            res.Close();
+            return len;
+        }
+
+        private int GetVerInt(string Str_Ver)
+        {
+            return Convert.ToInt32(Str_Ver.Replace(".", ""));
+        }
+
+        public void Dispose()
+        {
+            this.CheckVerRun = false;
+        }
+
+        /// <summary>
+        /// PC软件升级方法
+        /// </summary>
+        public void PCUpdate()
+        {
+            System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+            try
+            {
+                string UpdateProgram = "ConsoleCopyFile.exe";
+                if (!File.Exists(UpdateProgram))
+                {
+                    ShowStr("升级程序丢失");
+                    return;
+                }
+                string tempcopyname = "%($)%.exe";//临时复制的文件，不需要复制此文件
+                File.Copy(UpdateProgram, UpdateTempFile + @"\" + tempcopyname);
+
+                string filePath = this.ApplicationRunPath + @"\" + UpdateTempFile + @"\" + tempcopyname;
+                startInfo.FileName = filePath;
+                //参数0为源文件夹，参数1为目标文件夹，参数2为复制完毕后运行程序
+                string parameter = string.Format("{0} {1} {2}"
+                                    , this.ApplicationRunPath + @"\" + UpdateTempFile
+                                    , this.ApplicationRunPath
+                                    , this.ApplicationRunPath + @"\ECInspect.exe");
+                startInfo.Arguments = parameter;
+                startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Normal;
+                System.Diagnostics.Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+#if DEBUG
+                MessageBox.Show(ex.Message,"升级故障");
+#endif
+                log.AddERRORLOG("升级故障：" + ex.Message);
+            }
+            finally
+            {
+                Environment.Exit(0);
+            }
+        }
+
+        private void ShowStr(string str)
+        {
+            Console.WriteLine("{0}\t{1}", DateTime.Now.ToString("HH:mm:ss"), str);
+            
+            if (EventShowStr != null) EventShowStr(str);
+        }
+    }
+}

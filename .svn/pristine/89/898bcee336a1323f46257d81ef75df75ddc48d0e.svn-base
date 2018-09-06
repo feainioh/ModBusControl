@@ -1,0 +1,407 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{F1A19CC6-ED48-4D46-A9BB-4D71F21217E4}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ECInspect</RootNamespace>
+    <AssemblyName>ECInspect</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>EC.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Basler.Pylon, Version=1.0.0.0, Culture=neutral, PublicKeyToken=e389355f398382ab, processorArchitecture=x86">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\Program Files\Basler\pylon 4\pylon .NET Preview\lib\x86\Basler.Pylon.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.TaskScheduler, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86">
+      <SpecificVersion>False</SpecificVersion>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <HintPath>bin\Debug\Interop.TaskScheduler.dll</HintPath>
+    </Reference>
+    <Reference Include="Open_eVision_NetApi_1_2">
+      <HintPath>..\..\..\..\..\Program Files\Euresys\Open eVision 1.2\Libraries\Bin\Open_eVision_NetApi_1_2.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Speech" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AxOpXML.cs" />
+    <Compile Include="CardReader.cs" />
+    <Compile Include="CCD\MatrixDecode.cs" />
+    <Compile Include="CCD\PicturePanelC.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="CCD\PicturePanelC.designer.cs">
+      <DependentUpon>PicturePanelC.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\CCDMatchForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\CCDMatchForm.Designer.cs">
+      <DependentUpon>CCDMatchForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CCD\CCDStatus.cs" />
+    <Compile Include="CCD\BaslerCCD.cs" />
+    <Compile Include="Form\CCDForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\CCDForm.Designer.cs">
+      <DependentUpon>CCDForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CModbus.Addr.cs" />
+    <Compile Include="CModbus.AxisMotion.cs" />
+    <Compile Include="Custom.Class.cs" />
+    <Compile Include="ECTest.cs" />
+    <Compile Include="Excepiton.cs" />
+    <Compile Include="IISUpdate.cs" />
+    <Compile Include="INIFileValue.cs" />
+    <Compile Include="INIFileValue.PRODUCT.cs" />
+    <Compile Include="INIFileValue.SANTEC.cs" />
+    <Compile Include="Form\Keyboard.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\Keyboard.Designer.cs">
+      <DependentUpon>Keyboard.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\Loading.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\Loading.Designer.cs">
+      <DependentUpon>Loading.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CCD\Match_OpeneVision.cs" />
+    <Compile Include="MyControl\AxisCarry.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\AxisCarry.Designer.cs">
+      <DependentUpon>AxisCarry.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\AxisY.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\AxisY.Designer.cs">
+      <DependentUpon>AxisY.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\AxisInterfaceBase.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\AxisInterfaceBase.Designer.cs">
+      <DependentUpon>AxisInterfaceBase.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\FilesSelect.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\FilesSelect.Designer.cs">
+      <DependentUpon>FilesSelect.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\YieldForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\YieldForm.Designer.cs">
+      <DependentUpon>YieldForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\ICTForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\ICTForm.Designer.cs">
+      <DependentUpon>ICTForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GlobalVar.cs" />
+    <Compile Include="MyControl\AxisTrackBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\AxisTrackBar.Designer.cs">
+      <DependentUpon>AxisTrackBar.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CModbus.cs" />
+    <Compile Include="Form\MarkChangeSetForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\MarkChangeSetForm.Designer.cs">
+      <DependentUpon>MarkChangeSetForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\AxisDot.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\AxisDot.Designer.cs">
+      <DependentUpon>AxisDot.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\AxisPeel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\AxisPeel.Designer.cs">
+      <DependentUpon>AxisPeel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\AxisX.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\AxisX.Designer.cs">
+      <DependentUpon>AxisX.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\GroupBoxEX.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Logs.cs" />
+    <Compile Include="ModbusTool.cs" />
+    <Compile Include="MyControl\COMM_EC.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MyControl\COMM_EC.Designer.cs">
+      <DependentUpon>COMM_EC.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\Either.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\Either.Designer.cs">
+      <DependentUpon>Either.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Custom.Enum.cs" />
+    <Compile Include="Form\Frame.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\Frame.Designer.cs">
+      <DependentUpon>Frame.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\ImageButton.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Form\Main.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\Main.Designer.cs">
+      <DependentUpon>Main.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\ManualForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\ManualForm.Designer.cs">
+      <DependentUpon>ManualForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\MarkForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\MarkForm.Designer.cs">
+      <DependentUpon>MarkForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\MsgBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\MsgBox.Designer.cs">
+      <DependentUpon>MsgBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\NozzleForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\NozzleForm.Designer.cs">
+      <DependentUpon>NozzleForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form\PLCInterface.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\PLCInterface.Designer.cs">
+      <DependentUpon>PLCInterface.cs</DependentUpon>
+    </Compile>
+    <Compile Include="myFunction.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Form\SystemForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\SystemForm.Designer.cs">
+      <DependentUpon>SystemForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\TestPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyControl\TestPanel.Designer.cs">
+      <DependentUpon>TestPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyControl\TabControlNF.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="INIFileValue.SHEET.cs" />
+    <Compile Include="Security.cs" />
+    <Compile Include="ShellLink.cs" />
+    <Compile Include="TextSpeech.cs" />
+    <Compile Include="WindowsSchedule.cs" />
+    <EmbeddedResource Include="CCD\PicturePanelC.resx">
+      <DependentUpon>PicturePanelC.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\CCDForm.resx">
+      <DependentUpon>CCDForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\CCDMatchForm.resx">
+      <DependentUpon>CCDMatchForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\FilesSelect.resx">
+      <DependentUpon>FilesSelect.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\Keyboard.resx">
+      <DependentUpon>Keyboard.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\YieldForm.resx">
+      <DependentUpon>YieldForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\ICTForm.resx">
+      <DependentUpon>ICTForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\Loading.resx">
+      <DependentUpon>Loading.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\AxisCarry.resx">
+      <DependentUpon>AxisCarry.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\AxisInterfaceBase.resx">
+      <DependentUpon>AxisInterfaceBase.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\AxisTrackBar.resx">
+      <DependentUpon>AxisTrackBar.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\MarkChangeSetForm.resx">
+      <DependentUpon>MarkChangeSetForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\AxisY.resx">
+      <DependentUpon>AxisY.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\COMM_EC.resx">
+      <DependentUpon>COMM_EC.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\AxisDot.resx">
+      <DependentUpon>AxisDot.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\AxisPeel.resx">
+      <DependentUpon>AxisPeel.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\AxisX.resx">
+      <DependentUpon>AxisX.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\Either.resx">
+      <DependentUpon>Either.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\Frame.resx">
+      <DependentUpon>Frame.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\Main.resx">
+      <DependentUpon>Main.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\ManualForm.resx">
+      <DependentUpon>ManualForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\MarkForm.resx">
+      <DependentUpon>MarkForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\MsgBox.resx">
+      <DependentUpon>MsgBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\NozzleForm.resx">
+      <DependentUpon>NozzleForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form\PLCInterface.resx">
+      <DependentUpon>PLCInterface.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="Form\SystemForm.resx">
+      <DependentUpon>SystemForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyControl\TestPanel.resx">
+      <DependentUpon>TestPanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="EC.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ModbusDll\ModbusDll.csproj">
+      <Project>{C2DBFEAC-5149-409E-B6F2-BEDE7D7EE389}</Project>
+      <Name>ModbusDll</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\UpdateTool\UpdateTool\UpdateTool.csproj">
+      <Project>{41AEBDB6-35B3-48F1-8AAD-B2512437C627}</Project>
+      <Name>UpdateTool</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\UsbEject\UsbEject.csproj">
+      <Project>{E1CCAEDD-96AB-4DE0-ADD2-89F43AA65C1F}</Project>
+      <Name>UsbEject</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>XCOPY /r/y $(TargetPath) $(ProjectDir)bin\Publish
+XCOPY /r/y $(TargetDir)Config $(ProjectDir)bin\Publish\Config
+XCOPY /r/y $(TargetDir)CleanLogFiles.exe $(ProjectDir)bin\Publish
+XCOPY /r/y $(TargetDir)Config.ini $(ProjectDir)bin\Publish
+XCOPY /r/y $(TargetDir)Config.XML $(ProjectDir)bin\Publish
+XCOPY /r/y $(TargetDir)ConsoleCopyFile.exe $(ProjectDir)bin\Publish
+XCOPY /r/y $(TargetDir)ModbusDll.dll $(ProjectDir)bin\Publish
+XCOPY /r/y $(TargetDir)Interop.TaskScheduler.dll $(ProjectDir)bin\Publish
+XCOPY /r/y $(TargetDir)Update.exe $(ProjectDir)bin\Publish
+XCOPY /r/y $(TargetDir)Yeylol.UsbEject.dll $(ProjectDir)bin\Publish</PostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>
+    </PreBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -1,0 +1,133 @@
+﻿namespace ECInspect
+{
+    partial class MsgBox
+    {
+        /// <summary>
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MsgBox));
+            this.groupBoxEx1 = new ECInspect.GroupBoxEx();
+            this.label_Content = new System.Windows.Forms.Label();
+            this.btn_Cancel = new ECInspect.ImageButton();
+            this.btn_Confirm = new ECInspect.ImageButton();
+            this.label_Title = new System.Windows.Forms.Label();
+            this.groupBoxEx1.SuspendLayout();
+            this.SuspendLayout();
+            // 
+            // groupBoxEx1
+            // 
+            this.groupBoxEx1.BackColor = System.Drawing.Color.Maroon;
+            this.groupBoxEx1.Controls.Add(this.label_Content);
+            this.groupBoxEx1.Controls.Add(this.btn_Cancel);
+            this.groupBoxEx1.Controls.Add(this.btn_Confirm);
+            this.groupBoxEx1.Controls.Add(this.label_Title);
+            this.groupBoxEx1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.groupBoxEx1.Location = new System.Drawing.Point(0, 0);
+            this.groupBoxEx1.Name = "groupBoxEx1";
+            this.groupBoxEx1.Radius = 10;
+            this.groupBoxEx1.Size = new System.Drawing.Size(784, 562);
+            this.groupBoxEx1.TabIndex = 3;
+            this.groupBoxEx1.TabStop = false;
+            this.groupBoxEx1.TitleFont = new System.Drawing.Font("SimSun", 10F);
+            // 
+            // label_Content
+            // 
+            this.label_Content.Dock = System.Windows.Forms.DockStyle.Top;
+            this.label_Content.Font = new System.Drawing.Font("Microsoft YaHei", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label_Content.Location = new System.Drawing.Point(3, 92);
+            this.label_Content.Name = "label_Content";
+            this.label_Content.Size = new System.Drawing.Size(778, 313);
+            this.label_Content.TabIndex = 6;
+            this.label_Content.Text = "XXXX";
+            this.label_Content.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // btn_Cancel
+            // 
+            this.btn_Cancel.Font = new System.Drawing.Font("Microsoft YaHei", 42F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.btn_Cancel.Location = new System.Drawing.Point(419, 454);
+            this.btn_Cancel.Name = "btn_Cancel";
+            this.btn_Cancel.Size = new System.Drawing.Size(300, 88);
+            this.btn_Cancel.TabIndex = 5;
+            this.btn_Cancel.Text = "取消";
+            this.btn_Cancel.UseVisualStyleBackColor = true;
+            this.btn_Cancel.Click += new System.EventHandler(this.btn_Cancel_Click);
+            // 
+            // btn_Confirm
+            // 
+            this.btn_Confirm.Font = new System.Drawing.Font("Microsoft YaHei", 42F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.btn_Confirm.Location = new System.Drawing.Point(58, 454);
+            this.btn_Confirm.Name = "btn_Confirm";
+            this.btn_Confirm.Size = new System.Drawing.Size(300, 88);
+            this.btn_Confirm.TabIndex = 4;
+            this.btn_Confirm.Text = "确认";
+            this.btn_Confirm.UseVisualStyleBackColor = true;
+            this.btn_Confirm.Click += new System.EventHandler(this.btn_Confirm_Click);
+            // 
+            // label_Title
+            // 
+            this.label_Title.Dock = System.Windows.Forms.DockStyle.Top;
+            this.label_Title.Font = new System.Drawing.Font("Microsoft YaHei", 26.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.label_Title.Location = new System.Drawing.Point(3, 17);
+            this.label_Title.Name = "label_Title";
+            this.label_Title.Size = new System.Drawing.Size(778, 75);
+            this.label_Title.TabIndex = 3;
+            this.label_Title.Text = "----";
+            this.label_Title.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // MsgBox
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.DarkRed;
+            this.ClientSize = new System.Drawing.Size(784, 562);
+            this.Controls.Add(this.groupBoxEx1);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.Name = "MsgBox";
+            this.ShowInTaskbar = false;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.TopMost = true;
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.MsgBox_FormClosed);
+            this.Load += new System.EventHandler(this.MsgBox_Load);
+            this.Shown += new System.EventHandler(this.MsgBox_Shown);
+            this.groupBoxEx1.ResumeLayout(false);
+            this.ResumeLayout(false);
+
+        }
+
+        #endregion
+
+        private GroupBoxEx groupBoxEx1;
+        private System.Windows.Forms.Label label_Content;
+        private ImageButton btn_Cancel;
+        private ImageButton btn_Confirm;
+        private System.Windows.Forms.Label label_Title;
+
+
+    }
+}

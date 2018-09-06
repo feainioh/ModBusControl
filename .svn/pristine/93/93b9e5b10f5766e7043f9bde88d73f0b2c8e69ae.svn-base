@@ -1,0 +1,105 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Drawing;
+using Euresys.Open_eVision_1_2;
+
+namespace ECInspect
+{
+    class GlobalVar
+    {
+        /// <summary>
+        /// 连接PLC的modbus
+        /// </summary>
+        internal static CModbus c_Modbus;
+        /// <summary>
+        /// EC测试机
+        /// </summary>
+        internal static ECTest m_ECTest;
+        /// <summary>
+        /// 读卡器
+        /// </summary>
+        internal static CardReader m_CardReader;
+        /// <summary>
+        /// 机器当前运行模式
+        /// </summary>
+        internal static RunMode RunningMode = RunMode.Normal;
+        /// <summary>
+        /// 升级模块
+        /// </summary>
+        internal static IISUpdate PCSoftware;//开启监听服务器是否有新版本升级程序
+
+        /// <summary>
+        /// 程序关闭
+        /// </summary>
+        internal static bool SoftWareShutDown = false;
+
+        public static string gl_str_productModel = "";
+        public static String gl_MCHFileName = "MCH";
+        public static Bitmap gl_bmp_TotalSheet = null;
+        //-------------參數設置變量-------------
+        public static int gl_decode_timeout = 5000000;
+
+
+        //---------全局变量
+        internal const int TimerInterval = 1000;//更新界面数据，刷新的时间间隔
+
+        internal const string Folder_Config = "config";     //配置 文件夹名称
+        internal const string Folder_Product = "product";   //治具配置 文件夹名称
+
+        internal const string File_LOAD = "LOAD.ini";       //品目信息文件
+        internal const string File_Sheet = "SHEET.inf";     //统计信息文件
+        internal const string File_PLCErr = "PLCErr.XML";     //PLC异常文件
+
+        /// <summary>
+        /// PLC保持寄存器 值 换算倍数
+        /// </summary>
+        internal const int ConverRate = 200;
+        /// <summary>
+        /// PLC保持寄存器 值 换算倍数【搬运轴的转换倍数】
+        /// </summary>
+        internal const int ConverRate_Carry = 100;
+        /// <summary>
+        /// PLC保持寄存器 值 换算倍数【延时时间的换算倍数】
+        /// </summary>
+        internal const int ConverRate_Delay = 10;
+        /// <summary>
+        /// 轴运动的超时时间
+        /// </summary>
+        internal const int AxisMoveTimeout = 5000;
+        /// <summary>
+        /// 系统复位
+        /// </summary>
+        internal static bool SystemReset = false;
+        /// <summary>
+        /// 是否为PLC的窗口
+        /// </summary>
+        internal static bool PLCWindow = false;
+        /// <summary>
+        /// Basler相机
+        /// </summary>
+        internal static BaslerCCD CCD;
+        /// <summary>
+        /// OpeneVision匹配
+        /// </summary>
+        internal static Match_OpeneVision MatchModel;
+        /// <summary>
+        /// CCD是否启用【相机工作模式大于0次时，认为启用】
+        /// </summary>
+        internal static bool CCDEnable
+        {
+            get { return INIFileValue.Product_CM_MODE > 0 ? true : false; }
+        }
+
+        /// <summary>
+        /// 最后一次输入密码的时间，5分钟内不再要求输入密码
+        /// </summary>
+        internal static DateTime LastEnterPassword ;
+
+        /// <summary>
+        /// PLC的异常【从XML文档读取】
+        /// </summary>
+        internal static Dictionary<int, PLCErr> PLCErrDir = new Dictionary<int, PLCErr>();
+    }
+}

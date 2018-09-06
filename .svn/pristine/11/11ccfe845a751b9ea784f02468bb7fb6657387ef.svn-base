@@ -1,0 +1,62 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace ECInspect
+{
+    public partial class ICTForm : Frame
+    {
+        Logs log = Logs.LogsT();
+
+        public ICTForm()
+        {
+            InitializeComponent();
+        }
+
+        private void ICTForm_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btn_Tester_Click(object sender, EventArgs e)
+        {
+            GlobalVar.m_ECTest.StartTest();
+        }
+
+        private void btn_GroupNum_Click(object sender, EventArgs e)
+        {
+            MsgBoxShow("个体片数：" + INIFileValue.Product_GROUP.ToString());
+        }
+
+
+        /// <summary>
+        /// 弹框
+        /// </summary>
+        /// <param name="msg">内容</param>
+        /// <param name="title">标题</param>
+        /// <returns></returns>
+        private DialogResult MsgBoxShow(string msg, string title = "ICT")
+        {
+            log.AddCommLOG(msg);
+            MsgBox box = new MsgBox();
+            box.BackColor = Color.LimeGreen;
+            box.Title = title;
+            box.ShowText = msg;
+            return box.ShowDialog();
+        }
+
+        private void btn_ReadCard_Click(object sender, EventArgs e)
+        {
+            this.textBox_CardContent.Text = string.Empty;
+            string msg = GlobalVar.m_CardReader.ReadOnce();
+            this.textBox_CardContent.Text = !string.IsNullOrEmpty(msg) ? msg : "读取失败";
+            log.AddCommLOG("手动 读卡器:" + msg);
+        }
+
+    }
+}

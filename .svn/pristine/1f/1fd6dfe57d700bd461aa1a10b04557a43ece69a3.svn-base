@@ -1,0 +1,436 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using Euresys.Open_eVision_1_2;
+using System.Threading;
+using System.Collections;
+using System.IO;
+
+namespace ECInspect
+{
+    public partial class PicturePanelC : PictureBox
+    {
+        delegate void dele_showMsgOnWindow();
+        delegate void dele_showBmpDialog(Bitmap obj);
+
+        private myFunction myfunc = new myFunction();
+        public bool SizeNew = false;
+        public bool SizeNewenter = false;
+        public bool Moveenter = false;
+
+        //测试信息变量
+        public string m_product_type = "";
+        public bool m_inAnalysis = false;  //判断是否解析完成
+        public string m_decodeStr = "";    //解析条码
+        public int m_AnalysisResult_barcode = -1;  //条码解析分析结果
+        public int m_AnalysisResult_shape = -1;  //形状解析结果
+        public int RectangleType = 0;  // 0: NULL 1：条码区域  2：形状区域
+        
+        //形状分析
+        MatrixDecode m_decoder = new MatrixDecode();
+        //有效点阵集合---emguCV
+        //private List<List<CircleF>> m_list_validCirles = new List<List<CircleF>>();
+        //有效点阵集合---openeVision
+        private List<List<PositionInfo>> m_list_PositionInfo = new List<List<PositionInfo>>();
+
+        public PicturePanelC()
+        {
+            InitializeComponent();
+            //bmp = new Bitmap(this.Width, this.Height);
+            indexlabel.BackColor = Color.Transparent;
+            indexlabel.ForeColor = Color.White;
+            indexlabel.AutoSize = true;
+            this.BackColor = Color.Transparent;
+            this.indexlabel.Text = "";
+        }
+        private void updatePictureBox(Bitmap bmp)
+        {
+            try
+            {
+                this.BackgroundImage = bmp;
+                this.Refresh();
+            }
+            catch { }
+        }
+        private Bitmap GetValidAreaForAnalysis()
+        {
+            Bitmap bmp2 = new Bitmap(this.Width, this.Height);
+            try
+            {
+                lock (GlobalVar.gl_bmp_TotalSheet)
+                {
+                    Bitmap _bmp2 = (Bitmap)GlobalVar.gl_bmp_TotalSheet.Clone();
+                    bmp2 = myfunc.copyImage(_bmp2, PicX, PicY, Picwidth, Picheight);
+                }
+            }
+            catch { }
+            return bmp2;
+        }
+        #region 鼠标操作
+        private void PicturePanelC_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (m_inAnalysis) { return; }
+            try
+            {
+                if (SizeNewenter)
+                {
+                    if (e.X < 20 || e.Y < 20)  //不能无限缩小
+                        return;
+                    this.Width = e.X;
+                    this.Height = e.Y;
+                    this.Winwidth = this.Width;
+                    this.Winheight = this.Height;
+                    this.setPicturepoint(this.Parent.Height, this.Parent.Width);
+                    this.paintRectangle();
+                    this.Parent.Update();
+                    return;
+                }
+                if (Moveenter)
+                {
+                    this.Location = new Point(this.Location.X + e.X - clickX, this.Location.Y + e.Y - clickY);   //移动panel  
+                    this.WinX = this.Location.X;
+                    this.WinY = this.Location.Y;
+                    this.setPicturepoint(this.Parent.Height, this.Parent.Width);
+                    this.paintRectangle();
+                    this.Parent.Update();
+                    return;
+                }
+                if (e.X > this.Width - 14 && e.X < this.Width && e.Y > this.Height - 14 && e.Y < this.Height) 
+                {
+                    this.Cursor = Cursors.SizeNWSE;   //鼠标移动到放大缩小边界
+                    SizeNew = true;
+                }
+                else
+                {
+                    this.Cursor = Cursors.SizeAll;
+                    SizeNew = false;
+                }
+            }
+            catch { }
+        }
+
+        public int clickX = 0;  //按下的点坐标
+        public int clickY = 0;
+        private void PicturePanelC_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (m_inAnalysis) { return; }
+            try
+            {
+                if (SizeNew)  //如果在放大区域，则移动时控制放大缩小
+                {
+                    SizeNewenter = true;
+                    return;
+                }
+                Moveenter = true;
+                clickX = e.X;
+                clickY = e.Y;
+            }
+            catch { }
+        }
+
+        private void PicturePanelC_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (m_inAnalysis) { return; }
+            try
+            {
+                SizeNewenter = false;
+                Moveenter = false;
+                this.Cursor = Cursors.Default;
+                ROIChange();
+            }
+            catch { }
+        }
+        #endregion
+        #region 绘制解析区域
+
+        public int PicX = 0;  //PictureBox中图片坐标
+        public int PicY = 0;
+        public int Picwidth = 0;
+        public int Picheight = 0;
+        public int WinX = 0;  //PictureBox相对坐标
+        public int WinY = 0;
+        public int Winwidth = 0;
+        public int Winheight = 0;
+        public int sequence = 0;
+        public void setPicturepoint(int BoxH, int BoxW) //计算截图像素值
+        {
+            try
+            {
+                if (GlobalVar.gl_bmp_TotalSheet == null)
+                    return;
+                PicX = (int)((double)WinX / BoxW * GlobalVar.gl_bmp_TotalSheet.Width + 0.5);
+                PicY = (int)((double)WinY / BoxH * GlobalVar.gl_bmp_TotalSheet.Height + 0.5);
+                Picwidth = (int)((double)Winwidth / BoxW * GlobalVar.gl_bmp_TotalSheet.Width + 0.5);
+                Picheight = (int)((double)Winheight / BoxH * GlobalVar.gl_bmp_TotalSheet.Height + 0.5);
+            }
+            catch { }
+        }
+
+        public void paintRectangle()
+        {
+            try
+            {
+                if (this.Width < 3 || this.Height < 3)  // 有长宽小于1时会报错
+                    return;
+                Bitmap bmp = new Bitmap(this.Width, this.Height);
+                //Graphics g = this.CreateGraphics();
+                Graphics g = Graphics.FromImage(bmp);
+                g.Clear(Color.Transparent);
+                Color col_edge = Color.White;
+                #region 画边
+                switch (this.RectangleType)
+                {
+                    case 1:
+                        col_edge = Color.Yellow;
+                        this.indexlabel.Text = this.sequence.ToString();
+                        break;
+                    case 2:
+                        this.indexlabel.Text = this.sequence.ToString();
+                        col_edge = Color.GreenYellow;
+                        break;
+                }
+                Pen pen = new Pen(col_edge, 3);
+                Pen dragpen = new Pen(Color.LimeGreen,3);
+                g.DrawRectangle(pen, 1, 1, bmp.Width - 8, bmp.Height - 8);
+                g.DrawRectangle(dragpen, bmp.Width - 14, bmp.Height - 14, 12, 12);//绘制拖拽小框
+                this.indexlabel.ForeColor = col_edge;
+                #endregion
+                #region 画条码结果
+                if (m_AnalysisResult_barcode >= 0)
+                {
+                    if ((m_AnalysisResult_barcode == 0)//PASS
+                        || (m_AnalysisResult_barcode == 11))//重复测试
+                    {
+                        pen = new Pen(Color.Aqua, 3);
+                        g.DrawEllipse(pen, Convert.ToInt32(bmp.Width * 0.2), Convert.ToInt32(bmp.Height * 0.2),
+                             Convert.ToInt32(bmp.Width * 0.6), Convert.ToInt32(bmp.Height * 0.6));
+                    }
+                    else
+                    {
+                        pen = new Pen(Color.Red, 3);
+                        g.DrawLine(pen, new Point(Convert.ToInt32(bmp.Width * 0.2), Convert.ToInt32(bmp.Height * 0.2)),
+                            new Point(Convert.ToInt32(bmp.Width * 0.8), Convert.ToInt32(bmp.Height * 0.8)));
+                        g.DrawLine(pen, new Point(Convert.ToInt32(bmp.Width * 0.8), Convert.ToInt32(bmp.Height * 0.2)),
+                            new Point(Convert.ToInt32(bmp.Width * 0.2), Convert.ToInt32(bmp.Height * 0.8)));
+                    }
+                }
+                #endregion
+                #region 画形状分析结果
+                if (m_AnalysisResult_shape >= 0)
+                {
+                    if (m_AnalysisResult_shape == 0)
+                    {
+                        pen = new Pen(Color.Aqua, 3);
+                        g.DrawEllipse(pen, Convert.ToInt32(bmp.Width * 0.2), Convert.ToInt32(bmp.Height * 0.2),
+                             Convert.ToInt32(bmp.Width * 0.6), Convert.ToInt32(bmp.Height * 0.6));
+                    }
+                    else
+                    {
+                        pen = new Pen(Color.Red, 3);
+                        g.DrawLine(pen, new Point(Convert.ToInt32(bmp.Width * 0.2), Convert.ToInt32(bmp.Height * 0.2)),
+                            new Point(Convert.ToInt32(bmp.Width * 0.8), Convert.ToInt32(bmp.Height * 0.8)));
+                        g.DrawLine(pen, new Point(Convert.ToInt32(bmp.Width * 0.8), Convert.ToInt32(bmp.Height * 0.2)),
+                            new Point(Convert.ToInt32(bmp.Width * 0.2), Convert.ToInt32(bmp.Height * 0.8)));
+                    }
+                }
+                dele_showBmpDialog dele = new dele_showBmpDialog(updatePictureBox);
+                Invoke(dele, bmp);
+                #endregion
+            }
+            catch { }
+        }
+        #endregion
+        #region 右键菜单
+        private void barcodeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                this.RectangleType = 1;  //条码区域
+                //this.indexlabel.Text = "条码区域";
+                this.paintRectangle();
+                this.Parent.Update();
+                //showSequenceSetForm();
+            }
+            catch { }
+        }
+        private void recToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                this.RectangleType = 2;
+                //this.indexlabel.Text = "识别区域";
+                this.paintRectangle();
+                this.Parent.Update();
+                //showSequenceSetForm();
+            }
+            catch { }
+        }
+        public delegate bool CheckSequenceiExistDe(PicturePanelC me1, int sequence);
+        public bool CheckSequenceiExist(PicturePanelC me1, int sequence)  //检查设置的序号是否已经存在了
+        {
+            for (int i = 0; i < this.Parent.Controls.Count; i++)
+            {
+                try
+                {
+                    if (this.Parent.Controls[i] is PicturePanelC)
+                    {
+                        PicturePanelC me2 = (PicturePanelC)this.Parent.Controls[i];
+                        if (me1.WinX == me2.WinX && me1.WinY == me2.WinY && me1.Winheight == me2.Winheight && me1.Winwidth == me2.Winwidth)  //不和自己比较
+                            continue;
+                        if (me1.RectangleType == me2.RectangleType && me2.sequence == sequence)
+                        {
+                            return false;
+                        }
+                    }
+                }
+                catch { }
+            }
+            return true;
+        }
+    
+        private void deleteToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.Parent.Controls.Remove(this);
+        }
+
+        private void toolStripMenuItem_Analysis_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                StartAnalysisFunction(true);
+            }
+            catch { }
+        }
+        #endregion 
+        #region 解析
+        public void clearOldDataAndRefresh()
+        {
+            try
+            {
+                m_AnalysisResult_shape = -1;
+                m_AnalysisResult_barcode = -1;
+                m_product_type = "";
+                m_decodeStr = "";
+                paintRectangle();
+            }
+            catch { }
+        }
+        public void StartAnalysisFunction(bool manualAnalysis)
+        {
+            try
+            {
+                clearOldDataAndRefresh();
+                m_inAnalysis = true;
+                switch (RectangleType)
+                {
+                    case 0:
+                        m_inAnalysis = false;
+                        break;
+                    case 1:  //条码类型
+                        ThreadPool.QueueUserWorkItem(Analysis_barcode, manualAnalysis);
+                        //Analysis_barcode(false);
+                        break;
+                    default: 
+                        break;
+                }
+            }
+            catch 
+            { }
+        }
+        //条码解析
+        private void Analysis_barcode(object obj)
+        {
+            Bitmap _bmp = GetValidAreaForAnalysis();
+            if(!Directory.Exists(@".\PcsImage"))
+            {
+                Directory.CreateDirectory(@".\PcsImage");
+            }
+            _bmp.Save(@".\PcsImage\" + sequence.ToString() + ".bmp" , System.Drawing.Imaging.ImageFormat.Bmp);
+            try
+            {
+                bool isManualAnalysis = (bool)obj;
+                MatrixDecode decoder = new MatrixDecode();
+                EImageBW8 _imgbw8 = decoder.ConvertBitmapToEImageBW8(_bmp);
+                m_decodeStr = decoder.GetDecodeStrbyEImageBW8(_imgbw8);
+                if (m_decodeStr == "")
+                {
+                    _bmp.RotateFlip(RotateFlipType.Rotate90FlipX);
+                    _imgbw8 = decoder.ConvertBitmapToEImageBW8(_bmp);
+                    m_decodeStr = decoder.GetDecodeStrbyEImageBW8(_imgbw8);
+                }
+                if (isManualAnalysis)
+                {
+                    dele_showBmpDialog dele = new dele_showBmpDialog(showBmpDialog);
+                    Invoke(dele, _bmp);
+                }
+            }
+            catch
+            {
+                m_AnalysisResult_barcode = 10;//解析失败
+            }
+            finally
+            {
+                m_inAnalysis = false;
+                _bmp.Dispose();
+            }
+        }
+   
+        private void upatePicturebox()
+        {
+            try
+            {
+                this.Update();
+            }
+            catch { }
+        }
+        private void showBmpDialog(Bitmap _bmp)
+        {
+            return;
+            //if (RectangleType == 1)
+            //{
+            //    magnify ma = new magnify(_bmp, m_decodeStr);
+            //    ma.ShowDialog();
+            //}
+            //else
+            //{
+            //    magnify ma = new magnify(_bmp);
+            //    ma.ShowDialog();
+            //}
+        }
+        #endregion 
+
+        public delegate void dele_ROIChanged(PicturePanelC ppc);
+        public event dele_ROIChanged Event_ROIChanged;
+
+        /// <summary>
+        /// ROI改变
+        /// </summary>
+        private void ROIChange()
+        {
+            if (this.Event_ROIChanged != null) this.Event_ROIChanged(this);
+        }
+
+    }
+
+    //根据CircleF中圆心的X值排序
+    public class TargetSortNumComparer : IComparer<PositionInfo>
+    {
+        public int Compare(PositionInfo circle1, PositionInfo circle2)
+        {
+            return ((new CaseInsensitiveComparer()).Compare(circle1.CenterX, circle2.CenterX));
+        }
+    }
+
+    public class ListCountNumComparer : IComparer<List<PositionInfo>>
+    {
+        public int Compare(List<PositionInfo> list1, List<PositionInfo> list2)
+        {
+            return ((new CaseInsensitiveComparer()).Compare(list2.Count, list1.Count));
+        }
+    }
+}

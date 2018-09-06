@@ -1,0 +1,153 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Threading;
+using System.IO;
+
+namespace ECInspect
+{
+    public partial class Loading : Form
+    {
+        private BackgroundWorker backworker = new BackgroundWorker();
+        private myFunction myfunction = new myFunction();
+        private Logs log = Logs.LogsT();
+        private delegate void dele_Process(string str);//显示进度的委托
+
+        public Loading()
+        {
+            InitializeComponent();
+            backworker.DoWork += new DoWorkEventHandler(backworker_DoWork);
+            backworker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(backworker_RunWorkerCompleted);
+        }
+
+        private void Loading_Load(object sender, EventArgs e)
+        {
+            backworker.RunWorkerAsync();
+        }
+
+        private void backworker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            try
+            {
+                dele_Process process = new dele_Process(ShowProcess);
+                this.Invoke(process, "连接服务器");
+                GlobalVar.PCSoftware = new IISUpdate(Application.StartupPath, System.Net.IPAddress.Parse("192.168.208.229"));//开启监听服务器是否有新版本升级程序
+                this.Invoke(process, "读取配置文件");
+                ReadIni();                      //读取配置文件
+                myfunction.ReadPLCErrXML();
+                this.Invoke(process, "读取配置文件完毕\r\n开始连接PLC");
+
+                GlobalVar.c_Modbus = new CModbus(INIFileValue.PLC_COM);//等调试PLC时开启
+                GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Mode, true); //软件开启，切换为自动状态
+                for (int i = 0; i < 10; i++)
+                {
+                    if (GlobalVar.c_Modbus.CommRun) break;
+                    Thread.Sleep(20);
+                }
+                if (GlobalVar.c_Modbus.CommRun) 
+                    this.Invoke(process, "PLC Modbus开启成功\r\n开始连接EC测试主机");
+                else
+                    this.Invoke(process, "连接PLC成功\r\n开始连接EC测试主机"); 
+
+                GlobalVar.m_ECTest = new ECTest(INIFileValue.EC_COM);
+                if (INIFileValue.BlockPoint.Count != INIFileValue.Product_GROUP)
+                {
+                    string err = INIFileValue.Product_NAME + "文档读取的坐标数量与测试数量不一致";
+                    ErrMsgBox(err, "数量不一致");
+                    e.Result = err;
+                }
+
+                if (GlobalVar.CCDEnable)
+                {
+                    this.Invoke(process, "当前模式启用相机，打开视觉软件···");
+                    GlobalVar.FindModel = new OpeneVision();
+                    GlobalVar.FindModel.InitFind(INIFileValue.FindModelFile);
+                    this.Invoke(process, "视觉软件开启成功");
+                    //修改相机拍照位置--[2018.4.11 lqz]
+                    this.Invoke(process,"写入MARK点坐标");
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.HoldingRegisters.CCD_TargetPoint, (int)((GlobalVar.gl_origin_X + INIFileValue.Product_MARK_X_STD) / GlobalVar.ConverRate_CCD));
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.HoldingRegisters.AxisY_PhotoLocation, (int)((GlobalVar.gl_origin_Y + INIFileValue.Product_MARK_Y_STD) * GlobalVar.ConverRate));
+                }
+
+                GlobalVar.m_CardReader = new CardReader(INIFileValue.ReadCard_COM);
+                //if (GlobalVar.m_ECTest.SetTRL() != 0) this.Invoke(process, "连接EC主机失败");
+                //else this.Invoke(process, "连接EC主机成功");
+                if (INIFileValue.BarcodeScanEnable) {
+                    this.Invoke(process, "当前模式启用康耐视条码枪，打开条码枪···");
+                     GlobalVar.gl_Scan= new Scan(INIFileValue.Scan_COM);
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.BarcodeScanUesd, true);
+                    this.Invoke(process, "康耐视条码枪开启成功");
+                }
+
+                
+
+
+#if !DEBUG
+                //创建windows计划任务
+                TaskScheduler._TASK_STATE taskstate_CleanLogs = WindowsSchedule.CreateTaskScheduler(
+                    "", "CleanLogs", string.Format("{0}定期删除日志文件", "EC电测PC电脑 "),
+                    Environment.CurrentDirectory + @"\CleanLogFiles.exe", Environment.CurrentDirectory + @"\Log", "PT24H0M");
+#endif
+            }
+            catch (Exception ex)
+            {
+                e.Result = ex.Message;
+                ErrMsgBox(ex.Message);
+                Environment.Exit(1);
+            }
+        }
+
+        private void ShowProcess(string str)
+        {
+            this.label_Show.Text = str;
+        }
+        
+        /// <summary>
+        /// 读取配置文件
+        /// </summary>
+        private void ReadIni()
+        {
+            myfunction.ReadSANTECIni("SANTEC.ini");
+            myfunction.ReadSheet();
+            myfunction.ReadProductIni();
+            if(GlobalVar.gl_UpSql)
+                myfunction.ReadMapping();
+        }
+
+        private void backworker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            try
+            {
+                Main mainform = new Main();
+                this.Visible = false;
+                this.ShowInTaskbar = false;
+                mainform.ShowDialog();
+            }
+            catch(Exception ex)
+            {
+                ErrMsgBox(ex.Message + "\r\n" + ex.StackTrace);
+                Environment.Exit(0);
+            }
+        }
+
+        /// <summary>
+        /// 异常弹框
+        /// </summary>
+        /// <param name="errmsg">异常内容</param>
+        /// <param name="title">异常标题</param>
+        /// <returns></returns>
+        private DialogResult ErrMsgBox(string errmsg, string title = "Loading异常")
+        {
+            log.AddERRORLOG(errmsg);
+            MsgBox box = new MsgBox();
+            box.Title = title;
+            box.ShowText = errmsg;
+            return box.ShowDialog();
+        }
+    }
+}

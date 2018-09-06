@@ -1,0 +1,377 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Threading;
+using Euresys.Open_eVision_1_2;
+
+namespace ECInspect
+{
+    public partial class CCDForm : Frame
+    {
+
+        /// <summary>
+        /// JOG运动 等待
+        /// </summary>
+        private ManualResetEventSlim JOGWait = new ManualResetEventSlim(false);
+        /// <summary>
+        /// 是否正方向
+        /// </summary>
+        private bool Positive = true;
+
+        /// <summary>
+        /// 线程是否允许运行
+        /// </summary>
+        public bool ThdRun = true;
+        private Thread Thd_Jog;//线程运行
+
+        public CCDForm()
+        {
+            InitializeComponent();
+
+            Add_Event();
+
+            this.WindowRefresh.Tick += new EventHandler(WindowRefresh_Tick);
+            WindowRefresh_Tick(null, EventArgs.Empty);//立刻刷新一次
+        }
+
+        /// <summary>
+        /// 增加委托
+        /// </summary>
+        private void Add_Event()
+        {
+            this.axisTrackBar.Event_AxisRun += new AxisTrackBar.dele_AxisRun(axisTrackBar_Event_AxisRun);
+            this.axisTrackBar.Event_TextClick += new AxisTrackBar.dele_TextClick(axisTrackBar_Event_TextClick);
+        }
+
+        private void WindowRefresh_Tick(object sender, EventArgs e)
+        {
+            this.either_Light.LeftPress = GlobalVar.c_Modbus.Coils.CCDLightStatus.Value;  //相机光源
+            this.either_Press.LeftPress = !GlobalVar.c_Modbus.Coils.Cylinder12.Value;  //相机汽缸
+
+            double RealLocation = 0d;//Y轴实际位置
+            RealLocation = GlobalVar.c_Modbus.HoldingRegisters.AxisY_RealLocation.Value;//Y轴实际位置
+            RealLocation /= GlobalVar.ConverRate;//Y轴实际位置
+            this.label_RealLocation.Text = string.Format("当前位置:{0}", RealLocation.ToString("#0.00"));
+
+            try
+            {
+                Image img = this.pictureBox_CCD.Image;
+                if (img == null) return;
+                Bitmap bitmap = new Bitmap(img);
+                List<PositionInfo> positioninfo = new List<PositionInfo>();
+                GlobalVar.MatchModel.ShapeMatch(bitmap, ref positioninfo);
+                DrawMatchResult(positioninfo);
+                if (positioninfo.Count > 0)
+                {
+                    PositionInfo info = positioninfo[0];
+                    UpdateText(info.CenterX.ToString("#.000"), info.CenterY.ToString("#.000"), (info.score * 100).ToString("#.0"));
+                }
+                else UpdateText("---", "---", "--");
+            }
+            catch { }
+            finally
+            { GC.Collect(); }
+        }
+
+        private void CCDForm_Load(object sender, EventArgs e)
+        {
+            if (GlobalVar.CCD != null)
+            {
+                GlobalVar.CCD.Event_ImageGrab += new BaslerCCD.dele_ImageGrab(CCD_Event_ImageGrab);
+                GlobalVar.CCD.ContinuousShot();
+            } 
+            
+            if (Thd_Jog == null || !Thd_Jog.IsAlive)
+            {
+                ThdRun = true;
+                JOGWait.Reset();
+                Thd_Jog = new Thread(Thd_JOGMOVE);
+                Thd_Jog.IsBackground = true;
+                Thd_Jog.Name = "CCD Y JOG运动线程";
+                Thd_Jog.Start();
+            }
+        }
+
+        private void UpdateText(string X, string Y, string Score)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(delegate
+                {
+                    this.textBox_X.Text = X;
+                    this.textBox_Y.Text = Y;
+                    this.textBox_Score.Text = Score;
+                }));
+            }
+            else
+            {
+                this.textBox_X.Text = X;
+                this.textBox_Y.Text = Y;
+                this.textBox_Score.Text = Score;
+            }
+        }
+
+        private void axisTrackBar_Event_AxisRun(double TargetPlace)
+        {
+            bool result = false;
+            string errstr = string.Empty;//异常信息字符串
+            result = GlobalVar.c_Modbus.YAxisMove(TargetPlace,ref errstr);
+            if (!result) MsgBox(string.Format("移动失败！\r\n{0}", errstr), Color.Red, MessageBoxButtons.OK);
+        }
+
+        private void axisTrackBar_Event_TextClick(object sender)
+        {
+            double d = 0d;
+            if (TextClick(sender, ref d, 3, this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate, this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate))
+            {
+                this.axisTrackBar.AxisRealValue = d;
+            }
+        }
+
+        /// <summary>
+        /// 文本框点击
+        /// </summary>
+        /// <param name="sender">文本框</param>
+        /// <param name="Value">值</param>
+        /// <param name="DecimalDigits">小数位数</param>
+        /// <param name="Max">最大值</param>
+        /// <param name="Min">最小值</param>
+        /// <returns></returns>
+        private bool TextClick(object sender, ref double Value, int DecimalDigits = 1, double Max = 999d, double Min = 0d)
+        {
+            try
+            {
+                this.WindowRefresh.Stop();
+
+                TextBox tb = (TextBox)sender;
+                //鼠标相对于屏幕的坐标
+                Point p1 = MousePosition;
+                //鼠标相对于窗体的坐标
+                Point p2 = this.PointToClient(p1);
+
+                Keyboard keyboard = new Keyboard(p1, Max, Min, DecimalDigits);
+                if (keyboard.ShowDialog() == DialogResult.OK)
+                {
+                    Value = (double)keyboard.RealValue;
+                    return true;
+                }
+                else return false;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            finally
+            {
+                this.WindowRefresh.Start();
+            }
+        }
+
+        private void CCD_Event_ImageGrab(Bitmap e)
+        {
+            try
+            {
+                if (this.pictureBox_CCD.InvokeRequired)
+                {
+                    this.pictureBox_CCD.BeginInvoke(new Action(delegate { this.pictureBox_CCD.Image = e; }));
+                }
+                else this.pictureBox_CCD.Image = e;
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 绘制匹配框
+        /// </summary>
+        /// <param name="bitmap"></param>
+        /// <returns></returns>
+        private void DrawMatchResult(List<PositionInfo> result)
+        {
+            try
+            {
+                this.pictureBox_CCD.Refresh();
+                using (Graphics g = this.pictureBox_CCD.CreateGraphics())
+                {
+                    Color color = Color.Red;
+                    Pen pen = new Pen(color, 3);
+                    pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Custom;
+                    pen.DashPattern = new float[] { 5, 5 };
+                    int width = GlobalVar.MatchModel.ROISize.Width;
+                    int height = GlobalVar.MatchModel.ROISize.Height;
+
+                    foreach (PositionInfo item in result)
+                    {
+                        Rectangle rect = new Rectangle();
+                        rect.X = (int)((item.CenterX - width / 2) * rate);
+                        rect.Y = (int)((item.CenterY - height / 2) * rate);
+                        rect.Width = (int)(width * rate);
+                        rect.Height = (int)(height * rate);
+                        g.DrawRectangle(pen, rect);
+                    }
+                    this.pictureBox_CCD.Update();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        private void btn_Set_Click(object sender, EventArgs e)
+        {
+            if (GlobalVar.CCD == null) return;
+
+            GlobalVar.CCD.Event_ImageGrab -= CCD_Event_ImageGrab;
+            Thread.Sleep(100);
+            GlobalVar.CCD.Stop();
+            Frame form = new CCDMatchForm();
+            form.TopLevel = false;
+            form.Parent = this;
+            form.MdiParent = this.MdiParent;
+            form.ShowDialog();
+            GlobalVar.CCD.ContinuousShot(); 
+            GlobalVar.CCD.Event_ImageGrab += new BaslerCCD.dele_ImageGrab(CCD_Event_ImageGrab);
+        }
+
+        private void CCDForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            if (GlobalVar.CCD != null)
+            {
+                GlobalVar.CCD.Event_ImageGrab -= CCD_Event_ImageGrab;
+                GlobalVar.CCD.Stop();
+            } 
+            
+            ThdRun = false;//停止刷新时，关闭线程
+            JOGWait.Set();//停止线程
+            AxisJOG(Positive, false);
+        }
+
+        private void either_Light_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            {
+                case LeftRightSide.Left:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.CCDLightStatus, true);
+                    break;
+                case LeftRightSide.Right:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.CCDLightStatus, false);
+                    break;
+            }
+            ReStartRefresh();
+        }
+
+        private void either_Press_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            {
+                case LeftRightSide.Left:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder12, false);
+                    break;
+                case LeftRightSide.Right:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder12, true);
+                    break;
+            }
+            ReStartRefresh();
+        }
+
+        private void btn_JOG_Positive_MouseDown(object sender, MouseEventArgs e)
+        {
+            StartJOG(true);
+        }
+
+        private void btn_JOG_MouseUp(object sender, MouseEventArgs e)
+        {
+            JOGWait.Reset();//停止JOG运动
+        }
+
+        private void btn_JOG_MouseCaptureChanged(object sender, EventArgs e)
+        {
+            JOGWait.Reset();//停止JOG运动
+        }
+        
+        private void btn_JOG_Negative_MouseDown(object sender, MouseEventArgs e)
+        {
+            StartJOG(false);
+        }
+
+        /// <summary>
+        /// 开启线程执行JOG
+        /// </summary>
+        /// <param name="positive">是否正方形</param>
+        private void StartJOG(bool positive)
+        {
+            Positive = positive;
+            JOGWait.Set();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private void Thd_JOGMOVE(object obj)
+        {
+            try
+            {
+                while (ThdRun)
+                {
+                    if (!JOGWait.IsSet)
+                    {
+                        AxisJOG(Positive, false);
+                        Thread.Sleep(200);
+                        continue;
+                    }
+
+                    JOGWait.Wait();
+                    if (!ThdRun) break;
+                    AxisJOG(Positive, true);
+                    Thread.Sleep(100);
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 轴JOG运动
+        /// </summary>
+        /// <param name="Positive">是否正向</param>
+        /// <param name="Run">是否运动</param>
+        private void AxisJOG(bool Positive, bool Run)
+        {
+            Coil JOG;
+            JOG = Positive ? GlobalVar.c_Modbus.Coils.YPositive : GlobalVar.c_Modbus.Coils.YNegative;
+            GlobalVar.c_Modbus.AddMsgList(JOG, Run);
+        }
+
+        double rate = 0d;//缩放比例
+        private void btn_Zoom_Click(object sender, EventArgs e)
+        {
+            this.pictureBox_CCD.SizeMode = PictureBoxSizeMode.Zoom;
+            rate = (double)this.pictureBox_CCD.Width / 1626;
+        }
+
+        private void btn_Normal_Click(object sender, EventArgs e)
+        {
+            this.pictureBox_CCD.SizeMode = PictureBoxSizeMode.Normal;
+            rate = 1;
+        }
+
+        private void btn_Test_Click(object sender, EventArgs e)
+        {
+            Thread thd = new Thread(new ThreadStart(delegate{
+            while(true)
+            {
+                Thread.Sleep(1500);
+                if (GlobalVar.c_Modbus.Coils.CCDLightStatus.Value) GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.CCDLightStatus, false);
+                else GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.CCDLightStatus, true);
+            }
+            }));
+            thd.IsBackground = false;
+            thd.Start();
+        }
+
+    }
+}

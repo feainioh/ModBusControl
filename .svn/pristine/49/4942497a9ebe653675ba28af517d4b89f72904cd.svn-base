@@ -1,0 +1,276 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace ECInspect
+{
+    /*******************枚举类*************************/
+
+    /// <summary>
+    /// 点击的按钮
+    /// </summary>
+    internal enum ClickBtn : byte
+    {
+        /// <summary>
+        /// 系统
+        /// </summary>
+        System,
+        /// <summary>
+        /// 手动
+        /// </summary>
+        Manual,
+        /// <summary>
+        /// 段取
+        /// </summary>
+        Prepare,
+        /// <summary>
+        /// 返回原点
+        /// </summary>
+        Reset,
+        /// <summary>
+        /// 相机
+        /// </summary>
+        CCD,
+        /// <summary>
+        /// 吸附装置
+        /// </summary>
+        Nozzle,
+        /// <summary>
+        /// 打标
+        /// </summary>
+        Mark,
+        /// <summary>
+        /// 不良统计
+        /// </summary>
+        BadStatistics,
+        /// <summary>
+        /// 自动测试仪
+        /// </summary>
+        ICT,
+        /// <summary>
+        /// PLC
+        /// </summary>
+        PLC
+    }
+
+    /// <summary>
+    ///  运行模式
+    /// </summary>
+    internal enum RunMode : byte
+    {         
+        /// <summary>
+        /// 正常的模式
+        /// </summary>
+        Normal,
+        /// <summary>
+        /// 非主界面
+        /// </summary>
+        NotMain
+    }
+
+    /// <summary>
+    /// 动作模式
+    /// </summary>
+    internal enum MovementPattern : byte
+    {
+        /// <summary>
+        /// 单次压合测试
+        /// </summary>
+        SinglePress = 0,
+        /// <summary>
+        /// 通常模式
+        /// </summary>
+        Normal = 1,
+        /// <summary>
+        /// 制品样本
+        /// </summary>
+        ProductSample = 2,
+        /// <summary>
+        /// 调整
+        /// </summary>
+        Adjustment = 3,
+    }
+
+    /// <summary>
+    /// 按钮状态
+    /// </summary>
+    internal enum BtnStatus : byte
+    {
+        /// <summary>
+        /// 返回原点
+        /// </summary>
+        Reset,
+        /// <summary>
+        /// 停止
+        /// </summary>
+        Stop
+    }
+
+    /// <summary>
+    /// 轴定义
+    /// </summary>
+    public enum Axis : byte
+    {
+        /// <summary>
+        /// X轴
+        /// </summary>
+        X,
+        /// <summary>
+        /// Y轴
+        /// </summary>
+        Y,
+        /// <summary>
+        /// 剥料轴
+        /// </summary>
+        Peel,
+        /// <summary>
+        /// 打点轴
+        /// </summary>
+        Dot,
+        /// <summary>
+        /// 搬运
+        /// </summary>
+        Carry
+    }
+
+    /// <summary>
+    /// 左右两边
+    /// </summary>
+    public enum LeftRightSide:byte
+    {
+        /// <summary>
+        /// 左边
+        /// </summary>
+        Left,
+        /// <summary>
+        /// 右边
+        /// </summary>
+        Right
+    }
+
+    /// <summary>
+    /// 数据类型 【密码框使用】
+    /// </summary>
+    internal enum DataType : byte
+    {
+        /// <summary>
+        /// 未确定
+        /// </summary>
+        None,
+        /// <summary>
+        /// 密码字符串
+        /// </summary>
+        StringType_Password,
+        /// <summary>
+        /// 普通字符串
+        /// </summary>
+        StringType,
+        /// <summary>
+        /// 整型
+        /// </summary>
+        IntType,
+        /// <summary>
+        /// 双精度
+        /// </summary>
+        DoubleType
+    }
+
+    #region EC
+    /// <summary>
+    /// EC运行反馈状态
+    /// </summary>
+    internal enum EC_RunType : byte
+    {
+        /// <summary>
+        /// 正常
+        /// </summary>
+        Normal,
+        /// <summary>
+        /// 异常
+        /// </summary>
+        Error,
+        /// <summary>
+        /// 通讯内容
+        /// </summary>
+        CommInfo
+    }
+
+    /// <summary>
+    /// 发送消息给EC主机后的答复结果
+    /// </summary>
+    enum ECMsgReply : byte
+    {
+        /// <summary>
+        /// 无应答
+        /// </summary>
+        None,
+        /// <summary>
+        /// 应答OK
+        /// </summary>
+        OK,
+        /// <summary>
+        /// 答复 错误（非指令错误）
+        /// </summary>
+        Error
+    }
+
+    /// <summary>
+    /// EC测试完成的总结果
+    /// </summary>
+    enum EC_TestResult : byte
+    {
+        /// <summary>
+        /// 全部测试PASS
+        /// </summary>
+        OK,
+        /// <summary>
+        /// 至少有一个测试没有PASS
+        /// </summary>
+        FAIL,
+        /// <summary>
+        /// 测试异常
+        /// </summary>
+        ERROR
+    }
+
+    /// <summary>
+    /// EC测试检测到的NG项
+    /// </summary>
+    enum EC_NGItem : byte
+    { 
+        /// <summary>
+        /// 【000】
+        /// </summary>
+        LEAK,
+        /// <summary>
+        /// 短路 【001】
+        /// </summary>
+        SHORT,
+        /// <summary>
+        /// 断路 【010】
+        /// </summary>
+        OPEN,
+        /// <summary>
+        /// 【011】
+        /// </summary>
+        OFFSET_M,
+        /// <summary>
+        /// 【100】
+        /// </summary>
+        OFFSET_N,
+        /// <summary>
+        /// 【101】
+        /// </summary>
+        ForgetPaste,
+        /// <summary>
+        /// 【110】
+        /// </summary>
+        NG,
+        /// <summary>
+        /// 测试结果不含以上类型则默认OK
+        /// </summary>
+        PASS
+    }
+    #endregion
+}

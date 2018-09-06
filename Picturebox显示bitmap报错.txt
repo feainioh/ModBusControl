@@ -1,0 +1,11 @@
+  BitmapFactory.CreateBitmap(out m_bitmap, image.Width, image.Height, image.Color);
+  BitmapFactory.UpdateBitmap(m_bitmap, image.Buffer, image.Width, image.Height, image.Color);
+  
+/* We have to dispose the bitmap after assigning the new one to the display control. */
+  Bitmap bitmap = pictureBox_capture.Image as Bitmap;
+  pictureBox_capture.Image = m_bitmap;
+  if (bitmap != null)
+  {
+      /* Dispose the bitmap. */
+      bitmap.Dispose();
+  }

@@ -1,0 +1,717 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using ModbusDll;
+using System.Threading;
+
+namespace ECInspect
+{
+    [ToolboxItem(false)]
+    public partial class AxisInterface : UserControl
+    {
+        #region 属性窗口
+        protected Axis m_AxisName = Axis.X;
+        /// <summary>
+        /// 轴名称
+        /// </summary>
+        [Category("自定义属性"),Description("轴的名称")]
+        public Axis AxisName
+        {
+            get { return m_AxisName; }
+            set 
+            {
+                this.axisTrackBar.AxisName = value;
+                this.m_AxisName = value;
+            }
+        }
+        #endregion
+
+        /// <summary>
+        /// JOG运动 等待
+        /// </summary>
+        private ManualResetEventSlim JOGWait = new ManualResetEventSlim(false);
+        /// <summary>
+        /// 是否正方向
+        /// </summary>
+        private bool Positive = true;
+
+        /// <summary>
+        /// 线程是否允许运行
+        /// </summary>
+        public bool ThdRun = true;
+        private Thread Thd_Jog;//线程运行
+
+        public AxisInterface()
+        {
+            InitializeComponent();
+            InitWindow();
+
+            Add_Event();
+
+            WindowRefresh.Interval = GlobalVar.TimerInterval;
+            WindowRefresh.Tick += new EventHandler(WindowRefresh_Tick);             
+        }
+
+        /// <summary>
+        /// 增加委托
+        /// </summary>
+        private void Add_Event()
+        {
+            this.axisTrackBar.Event_AxisRun += new AxisTrackBar.dele_AxisRun(axisTrackBar_Event_AxisRun);
+            this.axisTrackBar.Event_TextClick += new AxisTrackBar.dele_TextClick(axisTrackBar_Event_TextClick);
+        }
+
+        private void WindowRefresh_Tick(object sender, EventArgs e)
+        {
+            Console.WriteLine(this.m_AxisName.ToString() + "父窗体刷新");
+            UpdateValue();
+        }
+
+        /// <summary>
+        /// 初始化界面
+        /// </summary>
+        private void InitWindow()
+        {
+            try
+            {
+                return;//2017.08.28取消使用，长期不用后可用删除
+                double MAX, MIN;
+                MAX = MIN = 0d;
+                int Value = 0;
+
+                switch (m_AxisName)
+                {
+                    case Axis.Dot:
+                        MAX = INIFileValue.DotAxisRange.MAX;
+                        MIN = INIFileValue.DotAxisRange.MIN;
+                        Value = GlobalVar.c_Modbus != null ? GlobalVar.c_Modbus.HoldingRegisters.AxisDot_RealLocation.Value : 0;//实际位置
+                        break;
+                    case Axis.X:
+                        MAX = INIFileValue.XAxisRange.MAX;
+                        MIN = INIFileValue.XAxisRange.MIN;
+                        Value = GlobalVar.c_Modbus != null ? GlobalVar.c_Modbus.HoldingRegisters.AxisDot_RealLocation.Value : 0;//实际位置
+                        break;
+                    case Axis.Y:
+                        MAX = INIFileValue.YAxisRange.MAX;
+                        MIN = INIFileValue.YAxisRange.MIN;
+                        Value = GlobalVar.c_Modbus != null ? GlobalVar.c_Modbus.HoldingRegisters.AxisY_RealLocation.Value : 0;//实际位置
+                        break;
+                    case Axis.Carry:
+                        MAX = INIFileValue.CarryAxisRange.MAX;
+                        MIN = INIFileValue.CarryAxisRange.MIN;
+                        Value = GlobalVar.c_Modbus != null ? GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_RealLocation.Value : 0;//实际位置
+                        break;
+                    default:
+                        return;
+                }
+
+                if (this.m_AxisName == Axis.Carry)
+                {
+                    this.axisTrackBar.AxisMaxValue = Convert.ToInt32(MAX * GlobalVar.ConverRate_Carry);
+                    this.axisTrackBar.AxisMinValue = Convert.ToInt32(MIN * GlobalVar.ConverRate_Carry);
+                    this.axisTrackBar.AxisRealValue = (double)Value / GlobalVar.ConverRate_Carry;
+                }
+                else
+                {
+                    this.axisTrackBar.AxisMaxValue = Convert.ToInt32(MAX * GlobalVar.ConverRate);
+                    this.axisTrackBar.AxisMinValue = Convert.ToInt32(MIN * GlobalVar.ConverRate);
+                    this.axisTrackBar.AxisRealValue = (double)Value / GlobalVar.ConverRate;
+                }
+            }
+            catch (Exception ex) { }
+        }
+
+        private void axisTrackBar_Event_AxisRun(double TargetPlace)
+        {
+            bool result = false;
+            string errstr = string.Empty;//异常信息字符串
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    result = GlobalVar.c_Modbus.DotAxisMove(TargetPlace, ref errstr);
+                    break;
+                case Axis.X:
+                    result = GlobalVar.c_Modbus.XAxisMove(TargetPlace, ref errstr);
+                    break;
+                case Axis.Y:
+                    result = GlobalVar.c_Modbus.YAxisMove(TargetPlace, ref errstr);
+                    break;
+                case Axis.Carry:
+                    result = GlobalVar.c_Modbus.CarryAxisMove(TargetPlace, ref errstr);
+                    break;
+            }
+            if (!result) MsgBox(string.Format("移动失败！\r\n{0}", errstr), Color.Red, MessageBoxButtons.OK);
+        }
+
+        private void axisTrackBar_Event_TextClick(object sender)
+        {
+            double d = 0d;
+            double Max, Min;
+            if (this.m_AxisName == Axis.Carry)
+            {
+                Max = this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate_Carry;
+                Min = this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate_Carry;
+            }
+            else
+            {
+                Max = this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate;
+                Min = this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate;
+            }
+            if (TextClick(sender, ref d, 3, Max, Min))
+            {
+                this.axisTrackBar.AxisRealValue = d;
+            }
+        }
+
+        private void btn_Origin_Click(object sender, EventArgs e)
+        {
+            if (!MsgBox("是否返回原点?", Color.LimeGreen, MessageBoxButtons.YesNo)) return;
+            AxisHOME();
+        }
+
+        /// <summary>
+        /// 轴JOG运动
+        /// </summary>
+        private void AxisHOME()
+        {
+            Coil home;
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    home = GlobalVar.c_Modbus.Coils.DotHome;
+                    break;
+                case Axis.X:
+                    home = GlobalVar.c_Modbus.Coils.XHome;
+                    break;
+                case Axis.Y:
+                    home = GlobalVar.c_Modbus.Coils.YHome;
+                    break;
+                case Axis.Carry:
+                    home = GlobalVar.c_Modbus.Coils.CarryHome;
+                    break;
+                default:
+                    return;
+            }
+            GlobalVar.c_Modbus.AddMsgList(home, true);
+            GlobalVar.c_Modbus.AddMsgList(home, false);
+        }
+
+        /// <summary>
+        /// 更新窗体显示的值
+        /// </summary>
+        private void UpdateValue()
+        {
+            double RealLocation = 0d;//实际位置
+
+            double MoveSpeed = 0d;//定位速度
+            double MoveOriginSpeed = 0d;//归原点速度
+            double MoveOriginCrawSpeed = 0d;//归原点爬行速度
+            double JOGSpeed = 0d;//JOG速度
+            double AcceleratSpeed = 0d;//加速度
+            double DeceleratSpeed = 0d;//减速度
+
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    RealLocation = GlobalVar.c_Modbus.HoldingRegisters.AxisDot_RealLocation.Value;//实际位置
+                    MoveSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisDot_MoveSpeed.Value;//定位速度
+                    MoveOriginSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisDot_MoveOriginSpeed.Value;//归原点速度
+                    MoveOriginCrawSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisDot_MoveOriginCrawlSpeed.Value;//归原点爬行速度
+                    JOGSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisDot_JOGSpeed.Value;//JOG速度
+                    AcceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisDot_AcceleratSpeed.Value;//加速度
+                    DeceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisDot_DeceleratSpeed.Value;//减速度
+                    break;
+                case Axis.X:
+                    RealLocation = GlobalVar.c_Modbus.HoldingRegisters.AxisX_RealLocation.Value;//实际位置
+                    MoveSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisX_MoveSpeed.Value;//定位速度
+                    MoveOriginSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisX_MoveOriginSpeed.Value;//归原点速度
+                    MoveOriginCrawSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisX_MoveOriginCrawlSpeed.Value;//归原点爬行速度
+                    JOGSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisX_JOGSpeed.Value;//JOG速度
+                    AcceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisX_AcceleratSpeed.Value;//加速度
+                    DeceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisX_DeceleratSpeed.Value;//减速度
+                    break;
+                case Axis.Y:
+                    RealLocation = GlobalVar.c_Modbus.HoldingRegisters.AxisY_RealLocation.Value;//实际位置
+                    MoveSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisY_MoveSpeed.Value;//定位速度
+                    MoveOriginSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisY_MoveOriginSpeed.Value;//归原点速度
+                    MoveOriginCrawSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisY_MoveOriginCrawlSpeed.Value;//归原点爬行速度
+                    JOGSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisY_JOGSpeed.Value;//JOG速度
+                    AcceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisY_AcceleratSpeed.Value;//加速度
+                    DeceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisY_DeceleratSpeed.Value;//减速度
+                    break;
+                case Axis.Carry:
+                    RealLocation = GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_RealLocation.Value;//实际位置
+                    MoveSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_MoveSpeed.Value;//定位速度
+                    MoveOriginSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_MoveOriginSpeed.Value;//归原点速度
+                    MoveOriginCrawSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_MoveOriginCrawlSpeed.Value;//归原点爬行速度
+                    JOGSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_JOGSpeed.Value;//JOG速度
+                    AcceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_AcceleratSpeed.Value;//加速度
+                    DeceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_DeceleratSpeed.Value;//减速度
+                    break;
+                case Axis.Peel:
+                    JOGSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisPeel_JOGSpeed.Value;//JOG速度
+                    AcceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisPeel_AcceleratSpeed.Value;//加速度
+                    DeceleratSpeed = GlobalVar.c_Modbus.HoldingRegisters.AxisPeel_DeceleratSpeed.Value;//减速度
+                    break;
+                default:
+                    return;
+            }
+
+            if (m_AxisName == Axis.Carry)
+            {
+                RealLocation /= GlobalVar.ConverRate_Carry;//实际位置
+                MoveSpeed /= GlobalVar.ConverRate_Carry;//定位速度
+                MoveOriginSpeed /= GlobalVar.ConverRate_Carry;//归原点速度
+                MoveOriginCrawSpeed /= GlobalVar.ConverRate_Carry;//归原点爬行速度
+                JOGSpeed /= GlobalVar.ConverRate_Carry;//JOG速度 
+            }
+            else
+            {
+                RealLocation /= GlobalVar.ConverRate;//实际位置
+                MoveSpeed /= GlobalVar.ConverRate;//定位速度
+                MoveOriginSpeed /= GlobalVar.ConverRate;//归原点速度
+                MoveOriginCrawSpeed /= GlobalVar.ConverRate;//归原点爬行速度
+                JOGSpeed /= GlobalVar.ConverRate;//JOG速度
+            }
+
+            this.label_RealLocation.Text = string.Format("当前位置:{0}", RealLocation.ToString("#0.00"));
+            this.textBox_MoveSpeed.Text = MoveSpeed.ToString("#0.00");//定位速度
+            this.textBox_MoveOriginSpeed.Text = MoveOriginSpeed.ToString("#0.00");//归原点速度
+            this.textBox_MoveOriginCrawlSpeed.Text = MoveOriginCrawSpeed.ToString("#0.00");//归原点爬行速度
+            this.textBox_JOGSpeed.Text = JOGSpeed.ToString("#0.00");//JOG速度
+            this.textBox_AcceleratSpeed.Text = AcceleratSpeed.ToString();//加速度
+            this.textBox_DeceleratSpeed.Text = DeceleratSpeed.ToString();//减速度
+        }
+
+        /// <summary>
+        /// 开始刷新
+        /// </summary>
+        internal void StartRefresh()
+        {
+            this.WindowRefresh.Start();
+
+            if (Thd_Jog == null || !Thd_Jog.IsAlive)
+            {
+                ThdRun = true;
+                JOGWait.Reset();
+                Thd_Jog = new Thread(Thd_JOGMOVE);
+                Thd_Jog.IsBackground = true;
+                Thd_Jog.Name = this.m_AxisName + " JOG运动线程";
+                Thd_Jog.Start();
+            }
+        }
+
+        /// <summary>
+        /// 停止刷新
+        /// </summary>
+        internal void StopRefresh()
+        {
+            ThdRun = false;//停止刷新时，关闭线程
+            JOGWait.Set();//停止线程
+            AxisJOG(Positive, false);
+            this.WindowRefresh.Stop();
+        }
+       
+        private void btn_ReleaseAlarm_Click(object sender, EventArgs e)
+        {
+            AxisReleaseAlarm();
+        }
+
+        /// <summary>
+        /// 轴解除报警
+        /// </summary>
+        private void AxisReleaseAlarm()
+        {
+            Coil Alarm;
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    Alarm = GlobalVar.c_Modbus.Coils.DotAlarmRelease;
+                    break;
+                case Axis.X:
+                    Alarm = GlobalVar.c_Modbus.Coils.XAlarmRelease;
+                    break;
+                case Axis.Y:
+                    Alarm = GlobalVar.c_Modbus.Coils.YAlarmRelease;
+                    break;
+                case Axis.Carry:
+                    Alarm = GlobalVar.c_Modbus.Coils.CarryAlarmRelease;
+                    break;
+                default:
+                    return;
+            }
+            GlobalVar.c_Modbus.AddMsgList(Alarm, true);
+        }
+
+        private void btn_JOG_Positive_MouseDown(object sender, MouseEventArgs e)
+        {
+            StartJOG(true);
+        }
+
+        private void btn_JOG_MouseUp(object sender, MouseEventArgs e)
+        {
+            JOGWait.Reset();//停止JOG运动
+        }
+
+        private void btn_JOG_MouseCaptureChanged(object sender, EventArgs e)
+        {
+            JOGWait.Reset();//停止JOG运动
+        }
+
+        private void btn_JOG_Negative_MouseDown(object sender, MouseEventArgs e)
+        {
+            StartJOG(false);
+        }
+
+        /// <summary>
+        /// 开启线程执行JOG
+        /// </summary>
+        /// <param name="Positive">是否正方形</param>
+        private void StartJOG(bool positive)
+        {
+            Positive = positive;
+            JOGWait.Set();
+        }
+
+        private void Thd_JOGMOVE()
+        {
+            try
+            {
+                while (ThdRun) 
+                {
+                    if (!JOGWait.IsSet)
+                    {
+                        AxisJOG(Positive, false);
+                        Thread.Sleep(200);
+                        continue;
+                    }
+                    
+                    JOGWait.Wait();
+                    if (!ThdRun) break;
+                    AxisJOG(Positive, true);
+                    Thread.Sleep(100);
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 轴JOG运动
+        /// </summary>
+        /// <param name="Positive">是否正向</param>
+        /// <param name="Run">是否运动</param>
+        private void AxisJOG(bool Positive, bool Run)
+        {
+            Coil[] JOGCoil;
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    JOGCoil = new Coil[2] { GlobalVar.c_Modbus.Coils.DotPositive, GlobalVar.c_Modbus.Coils.DotNegative };
+                    break;
+                case Axis.X:
+                    JOGCoil = new Coil[2] { GlobalVar.c_Modbus.Coils.XPositive, GlobalVar.c_Modbus.Coils.XNegative };
+                    break;
+                case Axis.Y:
+                    JOGCoil = new Coil[2] { GlobalVar.c_Modbus.Coils.YPositive, GlobalVar.c_Modbus.Coils.YNegative };
+                    break;
+                case Axis.Peel:
+                    JOGCoil = new Coil[2] { GlobalVar.c_Modbus.Coils.PeelPositive, GlobalVar.c_Modbus.Coils.PeelNegative };
+                    break;
+                case Axis.Carry:
+                    JOGCoil = new Coil[2] { GlobalVar.c_Modbus.Coils.CarryPositive, GlobalVar.c_Modbus.Coils.CarryNegative };
+                    break;
+                default:
+                    return;
+            }
+             if (Run)
+             {
+                 if (Positive)
+                 {
+                     GlobalVar.c_Modbus.AddMsgList(JOGCoil[0], true);
+                     GlobalVar.c_Modbus.AddMsgList(JOGCoil[1], false);
+                 }
+                 else
+                 {
+                     GlobalVar.c_Modbus.AddMsgList(JOGCoil[0], false);
+                     GlobalVar.c_Modbus.AddMsgList(JOGCoil[1], true);
+                 }
+             }
+             else
+             {
+                 GlobalVar.c_Modbus.AddMsgList(JOGCoil[0], false);
+                 GlobalVar.c_Modbus.AddMsgList(JOGCoil[1], false);
+             }
+        }
+
+        /// <summary>
+        /// 文本框点击
+        /// </summary>
+        /// <param name="sender">文本框</param>
+        /// <param name="Value">值</param>
+        /// <param name="Max">最大值</param>
+        /// <param name="Min">最小值</param>
+        /// <returns></returns>
+        private bool TextClick(object sender,ref int Value,int Max = 999,int Min = 0)
+        {
+            try
+            {
+                this.WindowRefresh.Stop();
+
+                TextBox tb = (TextBox)sender;
+                //鼠标相对于屏幕的坐标
+                Point p1 = MousePosition;
+                //鼠标相对于窗体的坐标
+                Point p2 = this.PointToClient(p1);
+
+                Keyboard keyboard = new Keyboard(p1, Max, Min);
+                if (keyboard.ShowDialog() == DialogResult.OK)
+                {
+                    Value = (int)keyboard.RealValue;
+                    return true;
+                }
+                else return false;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            finally
+            {
+                this.WindowRefresh.Start();
+            }
+        }
+
+        /// <summary>
+        /// 更改PLC的保持寄存器的值
+        /// </summary>
+        /// <param name="sender">文本框</param>
+        /// <param name="register">保持寄存器</param>
+        protected void ChangePLCValue(object sender, HoldingRegister register)
+        {
+            int d = 0;
+            if (TextClick(sender, ref d))
+            {
+                GlobalVar.c_Modbus.AddMsgList(register, d);
+            }
+        }
+
+        /// <summary>
+        /// 文本框点击
+        /// </summary>
+        /// <param name="sender">文本框</param>
+        /// <param name="Value">值</param>
+        /// <param name="DecimalDigits">小数位数</param>
+        /// <param name="Max">最大值</param>
+        /// <param name="Min">最小值</param>
+        /// <returns></returns>
+        protected bool TextClick(object sender, ref double Value, int DecimalDigits = 1, double Max = 999d, double Min = 0d)
+        {
+            try
+            {
+                this.WindowRefresh.Stop();
+
+                TextBox tb = (TextBox)sender;
+                //鼠标相对于屏幕的坐标
+                Point p1 = MousePosition;
+                //鼠标相对于窗体的坐标
+                Point p2 = this.PointToClient(p1);
+
+                Keyboard keyboard = new Keyboard(p1, Max, Min,DecimalDigits);
+                if (keyboard.ShowDialog() == DialogResult.OK)
+                {
+                    Value = (double)keyboard.RealValue;
+                    return true;
+                }
+                else return false;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            finally
+            {
+                this.WindowRefresh.Start();
+            }
+        }
+
+        /// <summary>
+        /// 更改PLC的保持寄存器的值
+        /// </summary>
+        /// <param name="sender">文本框</param>
+        /// <param name="register">保持寄存器</param>
+        /// <param name="DecimalDigits">小数位数</param>
+        /// <param name="Max">最大值</param>
+        /// <param name="Min">最小值</param>
+        protected void ChangePLCValue(object sender, HoldingRegister register, int DecimalDigits, double Max = 999d, double Min = 0d)
+        {
+            double d = 0d;
+            if (TextClick(sender, ref d, DecimalDigits, Max, Min))
+            {
+                int Rate = 1;
+                if (m_AxisName == Axis.Carry) Rate = GlobalVar.ConverRate_Carry;//搬运轴的换算倍数
+                else Rate = GlobalVar.ConverRate;
+
+                GlobalVar.c_Modbus.AddMsgList(register, (int)(d * Rate));
+            }
+        }
+
+        private void textBox_MoveSpeed_Click(object sender, EventArgs e)
+        {
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisDot_MoveSpeed, 2);
+                    break;
+                case Axis.X:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisX_MoveSpeed, 2);
+                    break;
+                case Axis.Y:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_MoveSpeed, 2);
+                    break;
+                case Axis.Carry:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_MoveSpeed, 2, 800, 0);
+                    break;
+                case Axis.Peel:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisPeel_Speed, 2);
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        private void textBox_MoveOriginSpeed_Click(object sender, EventArgs e)
+        {
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisDot_MoveOriginSpeed, 2);
+                    break;
+                case Axis.X:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisX_MoveOriginSpeed, 2);
+                    break;
+                case Axis.Y:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_MoveOriginSpeed, 2);
+                    break;
+                case Axis.Carry:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_MoveOriginSpeed, 2);
+                    break;
+                default:
+                    return;
+            }            
+        }
+
+        private void textBox_MoveOriginCrawlSpeed_Click(object sender, EventArgs e)
+        {
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisDot_MoveOriginCrawlSpeed, 2, 50, 0);
+                    break;
+                case Axis.X:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisX_MoveOriginCrawlSpeed, 2, 50, 0);
+                    break;
+                case Axis.Y:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_MoveOriginCrawlSpeed, 2, 50, 0);
+                    break;
+                case Axis.Carry:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_MoveOriginCrawlSpeed, 2, 50, 0);
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        private void textBox_JOGSpeed_Click(object sender, EventArgs e)
+        {
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisDot_JOGSpeed, 2);
+                    break;
+                case Axis.X:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisX_JOGSpeed, 2);
+                    break;
+                case Axis.Y:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_JOGSpeed, 2);
+                    break;
+                case Axis.Peel:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisPeel_JOGSpeed, 2);
+                    break;
+                case Axis.Carry:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_JOGSpeed, 2);
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        private void textBox_AcceleratSpeed_Click(object sender, EventArgs e)
+        {
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisDot_AcceleratSpeed);
+                    break;
+                case Axis.X:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisX_AcceleratSpeed);
+                    break;
+                case Axis.Y:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_AcceleratSpeed);
+                    break;
+                case Axis.Peel:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisPeel_AcceleratSpeed);
+                    break;
+                case Axis.Carry:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_AcceleratSpeed);
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        private void textBox_DeceleratSpeed_Click(object sender, EventArgs e)
+        {
+            switch (m_AxisName)
+            {
+                case Axis.Dot:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisDot_DeceleratSpeed);
+                    break;
+                case Axis.X:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisX_DeceleratSpeed);
+                    break;
+                case Axis.Y:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_DeceleratSpeed);
+                    break;
+                case Axis.Peel:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisPeel_DeceleratSpeed);
+                    break;
+                case Axis.Carry:
+                    ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisCarry_DeceleratSpeed);
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// 弹框【确认或者取消】
+        /// </summary>
+        /// <param name="text">内容</param>
+        /// <param name="backcolor">背景色</param>
+        /// <returns></returns>
+        protected bool MsgBox(string text, Color backcolor, MessageBoxButtons btn)
+        {
+            MsgBox box = new MsgBox(btn);
+            box.Title = "提示";
+            box.ShowText = text;
+            box.BackColor = backcolor;
+            if (box.ShowDialog() == DialogResult.OK) return true;
+            else return false;
+        }
+    }
+}

@@ -1,0 +1,107 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace ECInspect
+{
+    [ToolboxItem(false)]
+    public partial class AxisY : AxisInterface
+    {
+        public AxisY()
+        {
+            InitializeComponent();
+            WindowRefresh.Tick += new EventHandler(WindowRefresh_Tick);
+        }
+
+        private void AxisY_Load(object sender, EventArgs e)
+        {
+            base.axisTrackBar.AxisMaxValue = INIFileValue.YAxisRange.MAX * GlobalVar.ConverRate;
+            base.axisTrackBar.AxisMinValue = INIFileValue.YAxisRange.MIN * GlobalVar.ConverRate;
+
+            if (GlobalVar.CCDEnable)
+            {
+                this.groupBoxEx_CCD.Visible = true;
+                this.label_Dis.Text = string.Format("{0} =",INIFileValue.Product_MARK_Y_STD);
+            }
+        }
+
+        private void WindowRefresh_Tick(object sender, EventArgs e)
+        {
+            Console.WriteLine(this.m_AxisName.ToString() + "子窗体刷新");
+            UpdateValue();
+        }
+
+        private void UpdateValue()
+        {
+            double YAxisJigPoint = GlobalVar.c_Modbus.HoldingRegisters.AxisY_JigPoint.Value;
+            YAxisJigPoint /= GlobalVar.ConverRate;
+            double YAxisReversePlacePoint = GlobalVar.c_Modbus.HoldingRegisters.AxisY_ReversePlacePoint.Value;
+            YAxisReversePlacePoint /= GlobalVar.ConverRate;
+            double YAxisPlacePoint = GlobalVar.c_Modbus.HoldingRegisters.AxisY_PlacePoint.Value;
+            YAxisPlacePoint /= GlobalVar.ConverRate;
+            double YAxisMarkPoint = GlobalVar.c_Modbus.HoldingRegisters.AxisY_MarkPoint.Value;
+            YAxisMarkPoint /= GlobalVar.ConverRate;
+            double YAxisPreparePoint = GlobalVar.c_Modbus.HoldingRegisters.AxisY_PrepareLocation.Value;
+            YAxisPreparePoint /= GlobalVar.ConverRate;
+            double YAxisPhotoPoint = GlobalVar.c_Modbus.HoldingRegisters.AxisY_PhotoLocation.Value;
+            YAxisPhotoPoint /= GlobalVar.ConverRate;
+            double YAxisPhotoCenterPosition = (double)GlobalVar.c_Modbus.HoldingRegisters.AxisY_PhotoLocation.Value / GlobalVar.ConverRate;
+            YAxisPhotoCenterPosition  -= INIFileValue.Product_MARK_Y_STD;
+
+            this.textBox_YAxisJigPosition.Text = YAxisJigPoint.ToString("#0.00");
+            this.textBox_YAxisReversePlacePosition.Text = YAxisReversePlacePoint.ToString("#0.00");
+            this.textBox_YAxisPlacePosition.Text = YAxisPlacePoint.ToString("#0.00");
+            this.textBox_YAxisMarkPosition.Text = YAxisMarkPoint.ToString("#0.00");
+            this.textBox_YAxisPreparePosition.Text = YAxisPreparePoint.ToString("#0.00");
+            this.textBox_YAxisPhotoPosition.Text = YAxisPhotoPoint.ToString("#0.00");
+            this.textBox_YAxisPhotoCenterPosition.Text = YAxisPhotoCenterPosition.ToString("#0.00");
+        }
+
+        private void textBox_YAxisJigPosition_Click(object sender, EventArgs e)
+        {
+            //return;//屏蔽，不让修改
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_JigPoint, 2, this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate, this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate);
+        }
+
+        private void textBox_YAxisReversePlacePosition_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_ReversePlacePoint, 2, this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate, this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate);
+        }
+
+        private void textBox_YAxisPlacePosition_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_PlacePoint, 2, this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate, this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate);
+        }
+
+        private void textBox_YAxisMarkPosition_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_MarkPoint, 2, this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate, this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate);
+        }
+
+        private void textBox_YAxisPreparePosition_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_PrepareLocation, 2, this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate, this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate);
+        }
+
+        private void textBox_YAxisPhotoCenterPosition_Click(object sender, EventArgs e)
+        {
+            double d = 0d;
+            if (TextClick(sender, ref d, 2, (double)INIFileValue.YAxisRange.MAX, (double)INIFileValue.YAxisRange.MIN))
+            {
+                this.textBox_YAxisPhotoCenterPosition.Text = d.ToString();
+                int Rate = 1;
+                if (m_AxisName == Axis.Carry) Rate = GlobalVar.ConverRate_Carry;//搬运轴的换算倍数
+                else Rate = GlobalVar.ConverRate;
+
+                double Location = d + INIFileValue.Product_MARK_Y_STD;
+                GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.HoldingRegisters.AxisY_PhotoLocation, (int)(Location * Rate));
+            }
+        }
+
+    }
+}

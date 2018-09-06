@@ -1,0 +1,175 @@
+﻿namespace ECInspect
+{
+    partial class MarkForm
+    {
+        /// <summary>
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            this.either_DownJig = new ECInspect.Either();
+            this.either_Mark1 = new ECInspect.Either();
+            this.either_Mark2 = new ECInspect.Either();
+            this.btn_MarkTest = new ECInspect.ImageButton();
+            this.btn_ChangeMarkDevice = new ECInspect.ImageButton();
+            this.btn_ChangeMarkSet = new ECInspect.ImageButton();
+            this.bnt_MarkCali = new ECInspect.ImageButton();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).BeginInit();
+            this.splitContainer.Panel1.SuspendLayout();
+            this.splitContainer.SuspendLayout();
+            this.SuspendLayout();
+            // 
+            // splitContainer
+            // 
+            // 
+            // splitContainer.Panel1
+            // 
+            this.splitContainer.Panel1.Controls.Add(this.bnt_MarkCali);
+            this.splitContainer.Panel1.Controls.Add(this.btn_ChangeMarkSet);
+            this.splitContainer.Panel1.Controls.Add(this.btn_ChangeMarkDevice);
+            this.splitContainer.Panel1.Controls.Add(this.btn_MarkTest);
+            this.splitContainer.Panel1.Controls.Add(this.either_Mark2);
+            this.splitContainer.Panel1.Controls.Add(this.either_Mark1);
+            this.splitContainer.Panel1.Controls.Add(this.either_DownJig);
+            this.splitContainer.Panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.splitContainer_Panel1_Paint);
+            this.splitContainer.Size = new System.Drawing.Size(1366, 768);
+            this.splitContainer.SplitterDistance = 630;
+            // 
+            // either_DownJig
+            // 
+            this.either_DownJig.BackColor = System.Drawing.SystemColors.Control;
+            this.either_DownJig.BtnLeftText = "放置位置";
+            this.either_DownJig.BtnRightText = "标记位置";
+            this.either_DownJig.LeftPress = true;
+            this.either_DownJig.Location = new System.Drawing.Point(57, 121);
+            this.either_DownJig.Name = "either_DownJig";
+            this.either_DownJig.Size = new System.Drawing.Size(717, 113);
+            this.either_DownJig.TabIndex = 0;
+            this.either_DownJig.TabStop = false;
+            this.either_DownJig.Title = "下治具";
+            this.either_DownJig.Event_BtnClick += new ECInspect.Either.dele_LeftRight(this.either_DownJig_Event_BtnClick);
+            // 
+            // either_Mark1
+            // 
+            this.either_Mark1.BackColor = System.Drawing.SystemColors.Control;
+            this.either_Mark1.BtnLeftText = "等待位置";
+            this.either_Mark1.BtnRightText = "标记位置";
+            this.either_Mark1.LeftPress = true;
+            this.either_Mark1.Location = new System.Drawing.Point(57, 266);
+            this.either_Mark1.Name = "either_Mark1";
+            this.either_Mark1.Size = new System.Drawing.Size(717, 113);
+            this.either_Mark1.TabIndex = 0;
+            this.either_Mark1.TabStop = false;
+            this.either_Mark1.Title = "打标器";
+            this.either_Mark1.Event_BtnClick += new ECInspect.Either.dele_LeftRight(this.either_Mark1_Event_BtnClick);
+            // 
+            // either_Mark2
+            // 
+            this.either_Mark2.BackColor = System.Drawing.SystemColors.Control;
+            this.either_Mark2.BtnLeftText = "上升";
+            this.either_Mark2.BtnRightText = "下降";
+            this.either_Mark2.LeftPress = true;
+            this.either_Mark2.Location = new System.Drawing.Point(57, 411);
+            this.either_Mark2.Name = "either_Mark2";
+            this.either_Mark2.Size = new System.Drawing.Size(717, 113);
+            this.either_Mark2.TabIndex = 0;
+            this.either_Mark2.TabStop = false;
+            this.either_Mark2.Title = "打标器";
+            this.either_Mark2.Event_BtnClick += new ECInspect.Either.dele_LeftRight(this.either_Mark2_Event_BtnClick);
+            // 
+            // btn_MarkTest
+            // 
+            this.btn_MarkTest.BackColor = System.Drawing.Color.Red;
+            this.btn_MarkTest.Font = new System.Drawing.Font("微软雅黑", 26.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.btn_MarkTest.Location = new System.Drawing.Point(1038, 121);
+            this.btn_MarkTest.Name = "btn_MarkTest";
+            this.btn_MarkTest.Size = new System.Drawing.Size(300, 80);
+            this.btn_MarkTest.TabIndex = 1;
+            this.btn_MarkTest.Text = "打标试运行";
+            this.btn_MarkTest.UseVisualStyleBackColor = false;
+            this.btn_MarkTest.Click += new System.EventHandler(this.btn_MarkTest_Click);
+            // 
+            // btn_ChangeMarkDevice
+            // 
+            this.btn_ChangeMarkDevice.BackColor = System.Drawing.Color.Red;
+            this.btn_ChangeMarkDevice.Font = new System.Drawing.Font("微软雅黑", 26.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.btn_ChangeMarkDevice.Location = new System.Drawing.Point(1038, 228);
+            this.btn_ChangeMarkDevice.Name = "btn_ChangeMarkDevice";
+            this.btn_ChangeMarkDevice.Size = new System.Drawing.Size(300, 80);
+            this.btn_ChangeMarkDevice.TabIndex = 1;
+            this.btn_ChangeMarkDevice.Text = "打标器更换";
+            this.btn_ChangeMarkDevice.UseVisualStyleBackColor = false;
+            this.btn_ChangeMarkDevice.Click += new System.EventHandler(this.btn_ChangeMarkDevice_Click);
+            // 
+            // btn_ChangeMarkSet
+            // 
+            this.btn_ChangeMarkSet.BackColor = System.Drawing.Color.Orange;
+            this.btn_ChangeMarkSet.Font = new System.Drawing.Font("微软雅黑", 26.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.btn_ChangeMarkSet.Location = new System.Drawing.Point(1038, 337);
+            this.btn_ChangeMarkSet.Name = "btn_ChangeMarkSet";
+            this.btn_ChangeMarkSet.Size = new System.Drawing.Size(300, 80);
+            this.btn_ChangeMarkSet.TabIndex = 1;
+            this.btn_ChangeMarkSet.Text = "打标器更换设定";
+            this.btn_ChangeMarkSet.UseVisualStyleBackColor = false;
+            this.btn_ChangeMarkSet.Click += new System.EventHandler(this.btn_ChangeMarkSet_Click);
+            // 
+            // bnt_MarkCali
+            // 
+            this.bnt_MarkCali.BackColor = System.Drawing.Color.LimeGreen;
+            this.bnt_MarkCali.Font = new System.Drawing.Font("微软雅黑", 26.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.bnt_MarkCali.Location = new System.Drawing.Point(1038, 434);
+            this.bnt_MarkCali.Name = "bnt_MarkCali";
+            this.bnt_MarkCali.Size = new System.Drawing.Size(300, 80);
+            this.bnt_MarkCali.TabIndex = 2;
+            this.bnt_MarkCali.Text = "打标校准";
+            this.bnt_MarkCali.UseVisualStyleBackColor = false;
+            this.bnt_MarkCali.Visible = false;
+            this.bnt_MarkCali.Click += new System.EventHandler(this.bnt_MarkCali_Click);
+            // 
+            // MarkForm
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(1366, 768);
+            this.Location = new System.Drawing.Point(0, 0);
+            this.Name = "MarkForm";
+            this.Text = "MarkForm";
+            this.splitContainer.Panel1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).EndInit();
+            this.splitContainer.ResumeLayout(false);
+            this.ResumeLayout(false);
+
+        }
+
+        #endregion
+
+        private Either either_DownJig;
+        private ImageButton btn_MarkTest;
+        private Either either_Mark2;
+        private Either either_Mark1;
+        private ImageButton btn_ChangeMarkSet;
+        private ImageButton btn_ChangeMarkDevice;
+        private ImageButton bnt_MarkCali;
+    }
+}

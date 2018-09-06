@@ -1,0 +1,62 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace ECInspect
+{
+    [ToolboxItem(false)]
+    public partial class AxisDot : AxisInterface
+    {
+        public AxisDot()
+        {
+            InitializeComponent();
+            WindowRefresh.Tick += new EventHandler(WindowRefresh_Tick);
+        }
+
+        private void AxisDot_Load(object sender, EventArgs e)
+        {
+            base.axisTrackBar.AxisMaxValue = INIFileValue.DotAxisRange.MAX * GlobalVar.ConverRate;
+            base.axisTrackBar.AxisMinValue = INIFileValue.DotAxisRange.MIN * GlobalVar.ConverRate;
+        }
+
+        private void WindowRefresh_Tick(object sender, EventArgs e)
+        {
+            Console.WriteLine(this.m_AxisName.ToString() + "子窗体刷新");
+            UpdateValue();
+        }
+
+        private void UpdateValue()
+        {
+            this.either_Mark2.LeftPress = !GlobalVar.c_Modbus.Coils.Cylinder_Dot.Value;          //打标器 上升
+
+            double DotAxisWaitMarkPoint = GlobalVar.c_Modbus.HoldingRegisters.AxisDot_WaitMarkPoint.Value;
+            DotAxisWaitMarkPoint /= GlobalVar.ConverRate;
+
+            this.textBox_DotAxisWaitMarkPoint.Text = DotAxisWaitMarkPoint.ToString("#0.00");
+        }
+
+        private void textBox_DotAxisWaitMarkPoint_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisDot_WaitMarkPoint, 2, this.axisTrackBar.AxisMaxValue / GlobalVar.ConverRate, this.axisTrackBar.AxisMinValue / GlobalVar.ConverRate);
+        }
+
+        private void either_Mark2_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            {
+                case LeftRightSide.Left:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_Dot, false);
+                    break;
+                case LeftRightSide.Right:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Cylinder_Dot, true);
+                    break;
+            }
+        }
+
+    }
+}

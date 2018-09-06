@@ -1,0 +1,289 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+
+namespace ECInspect
+{
+    //轴运动
+    partial class CModbus
+    {
+        public delegate void dele_AxisMove(string str,bool IsErr);//轴移动的显示消息委托
+        public event dele_AxisMove event_AxisMove;
+        
+        /// <summary>
+        /// 打点轴Y轴同时移动
+        /// </summary>
+        /// <param name="DotTargetPosition">打点轴目标位置</param>
+        /// <param name="YTargetPosition">Y轴目标位置</param>
+        /// <returns></returns>
+        internal bool DotYAxisMove(double DotTargetPosition,double YTargetPosition)
+        {
+            if (DotTargetPosition > INIFileValue.DotAxisRange.MAX || DotTargetPosition < INIFileValue.DotAxisRange.MIN)
+            {
+                ShowAxisMoveInfo(string.Format("打点轴移动至:{0}\t超出范围，不执行", DotTargetPosition), true);
+                log.AddERRORLOG(string.Format("打点轴移动至:{0}\t超出范围，不执行", DotTargetPosition));
+                return false;
+            }
+            if (YTargetPosition > INIFileValue.YAxisRange.MAX || YTargetPosition < INIFileValue.YAxisRange.MIN)
+            {
+                ShowAxisMoveInfo(string.Format("Y轴移动至:{0}\t超出范围，不执行", YTargetPosition), true);
+                log.AddERRORLOG(string.Format("Y轴移动至:{0}\t超出范围，不执行", YTargetPosition));
+                return false;
+            }
+
+            int XTarget = Convert.ToInt32(DotTargetPosition * GlobalVar.ConverRate);
+            int YTarget = Convert.ToInt32(YTargetPosition * GlobalVar.ConverRate);
+
+            if (!this.Coils.CanWriteCoordinate.Value)
+            {
+                log.AddERRORLOG("当前状态不可写入坐标√");
+                while (!this.Coils.CanWriteCoordinate.Value) Sleep(100);//等待可以写入坐标
+                log.AddERRORLOG("当前状态可以写入坐标×");
+            }
+            //以下修改为同时写入
+            //打点轴移动至目标位置，运动过程中注意避让Y轴
+            AddMsgList(HoldingRegisters.AxisDot_Point, XTarget);
+            //Y轴移动至目标位置，运动过程中注意避让打点轴
+            AddMsgList(HoldingRegisters.AxisY_Point, YTarget);
+
+            AddMsgList(Coils.WriteCoordinateComplete, true);//写入坐标完成
+            ShowAxisMoveInfo(string.Format("Dot:{0}\tY:{1}", DotTargetPosition, YTargetPosition));
+            log.AddCommLOG(string.Format("打点轴移动至:{0}\t写入PLC的值:{1}\tY轴移动至:{2}\t写入PLC的值:{3}", 
+                                DotTargetPosition,
+                                DotTargetPosition * GlobalVar.ConverRate, 
+                                YTargetPosition,
+                                YTargetPosition * GlobalVar.ConverRate));
+            return true;
+        }
+
+        /// <summary>
+        /// 通知 X轴Y轴同时移动【①拍照后，②测试】
+        /// </summary>
+        /// <param name="XTargetPosition">X轴目标位置</param>
+        /// <param name="YTargetPosition">Y轴目标位置</param>
+        /// <returns></returns>
+        internal bool XYAxisMove(double XTargetPosition, double YTargetPosition)
+        {
+            if (XTargetPosition > INIFileValue.XAxisRange.MAX || XTargetPosition < INIFileValue.XAxisRange.MIN)
+            {
+                ShowAxisMoveInfo(string.Format("X轴移动至:{0}\t超出范围，不执行", XTargetPosition), true);
+                log.AddERRORLOG(string.Format("X轴移动至:{0}\t超出范围，不执行", XTargetPosition));
+                return false;
+            }
+            if (YTargetPosition > INIFileValue.YAxisRange.MAX || YTargetPosition < INIFileValue.YAxisRange.MIN)
+            {
+                ShowAxisMoveInfo(string.Format("Y轴移动至:{0}\t超出范围，不执行", YTargetPosition), true);
+                log.AddERRORLOG(string.Format("Y轴移动至:{0}\t超出范围，不执行", YTargetPosition));
+                return false;
+            }
+
+            int XTarget = Convert.ToInt32(XTargetPosition * GlobalVar.ConverRate);
+            int YTarget = Convert.ToInt32(YTargetPosition * GlobalVar.ConverRate);
+
+
+            if (!this.Coils.CanWriteCoordinate.Value)
+            {
+                log.AddERRORLOG("当前状态不可写入坐标×");
+                while (!this.Coils.CanWriteCoordinate.Value) Sleep(100);//等待可以写入坐标
+                log.AddERRORLOG("当前状态可以写入坐标√");
+            }
+            while (!GlobalVar.SystemReset)
+            {
+                //以下修改为同时写入
+                AddMsgList(HoldingRegisters.AxisX_Point, XTarget);
+                //Y轴移动至目标位置，运动过程中注意避让X轴
+                AddMsgList(HoldingRegisters.AxisY_Point, YTarget);
+                //try
+                //{
+                //    lock (WaitSync) Query();
+                //}
+                //catch { }
+                //if (GlobalVar.c_Modbus.HoldingRegisters.AxisX_Point.Value != XTarget || GlobalVar.c_Modbus.HoldingRegisters.AxisY_Point.Value != YTarget)
+                //{
+                //    while (!CommRun)
+                //    {
+                //        Thread.Sleep(1000);
+                //        if (GlobalVar.SystemReset) throw new Exception("等待通讯正常时，系统复位！");
+                //    }
+                //    Thread.Sleep(50);
+                //    continue;//写入不成功，则再次写入
+                //}
+                AddMsgList(Coils.WriteCoordinateComplete, true);//写入坐标完成
+                ShowAxisMoveInfo(string.Format("X:{0}  Y:{1}", XTargetPosition.ToString("#0.000"), YTargetPosition.ToString("#0.000")));
+                log.AddCommLOG(string.Format("X移动至:{0}\t写入PLC的值:{1}\tY轴移动至:{2}\t写入PLC的值:{3}",
+                                    XTargetPosition,
+                                    XTargetPosition * GlobalVar.ConverRate,
+                                    YTargetPosition,
+                                    YTargetPosition * GlobalVar.ConverRate));
+                return true;
+            }
+            return false;//超过次数则认为失败
+        }
+
+        /// <summary>
+        /// 打点轴移动至目标位置
+        /// </summary>
+        /// <param name="TargetPosition">目标位置</param>
+        internal bool DotAxisMove(double TargetPosition, ref string err)
+        {
+            if (TargetPosition > INIFileValue.DotAxisRange.MAX || TargetPosition < INIFileValue.DotAxisRange.MIN)
+            {
+                err = string.Format("打点轴移动至:{0}\t超出范围，不执行", TargetPosition);
+                ShowAxisMoveInfo(err, true);
+                log.AddERRORLOG(err);
+                return false;
+            }
+
+            int Target = Convert.ToInt32(TargetPosition * GlobalVar.ConverRate);
+
+            if (!this.Coils.CanWriteCoordinate.Value)
+            {
+                err = "当前状态不可写入坐标";
+                log.AddERRORLOG(err);//不可写入坐标
+                return false;
+            }
+
+            AddMsgList(HoldingRegisters.AxisDot_TargetPoint, Target);//打点轴手动定位
+            AddMsgList(Coils.DotManualPosition, true);//打点轴手动定位
+
+            ShowAxisMoveInfo("打点轴移动至:" + TargetPosition);
+            log.AddCommLOG(string.Format("打点轴移动至:{0}\t写入PLC的值:{1}", TargetPosition, TargetPosition * GlobalVar.ConverRate));
+            return true;
+        }
+
+        /// <summary>
+        /// X轴移动至目标位置【手动定位】
+        /// </summary>
+        /// <param name="TargetPosition">目标位置</param>
+        internal bool XAxisMove(double TargetPosition, ref string err)
+        {
+            if (TargetPosition > INIFileValue.XAxisRange.MAX || TargetPosition < INIFileValue.XAxisRange.MIN)
+            {
+                err = string.Format("X移动至:{0}\t超出范围，不执行", TargetPosition);
+                ShowAxisMoveInfo(err, true);
+                log.AddERRORLOG(err);
+                return false;
+            }
+
+            int Target = Convert.ToInt32(TargetPosition * GlobalVar.ConverRate);
+
+            if (!this.Coils.CanWriteCoordinate.Value)
+            {
+                err = "当前状态不可写入坐标";
+                log.AddERRORLOG(err);//不可写入坐标
+                return false;
+            }
+            AddMsgList(HoldingRegisters.AxisX_TargetPoint, Target);
+            AddMsgList(Coils.XManualPosition, true);//X轴手动定位
+
+            ShowAxisMoveInfo("X轴移动至:" + TargetPosition);
+            log.AddCommLOG(string.Format("X轴移动至:{0}\t写入PLC的值:{1}", TargetPosition, TargetPosition * GlobalVar.ConverRate));
+            return true;
+        }
+
+        /// <summary>
+        /// Y轴移动至目标位置
+        /// </summary>
+        /// <param name="TargetPosition">目标位置【实际值，不需要*100】</param>
+        internal bool YAxisMove(double TargetPosition, ref string err)
+        {
+            if (TargetPosition > INIFileValue.YAxisRange.MAX || TargetPosition < INIFileValue.YAxisRange.MIN)
+            {
+                err = string.Format("Y轴移动至:{0}\t超出范围，不执行", TargetPosition);
+                ShowAxisMoveInfo(err, true);
+                log.AddERRORLOG(err);
+                return false;
+            }
+
+            int Target = Convert.ToInt32(TargetPosition * GlobalVar.ConverRate);
+
+            if (!this.Coils.CanWriteCoordinate.Value)
+            {
+                err = "当前状态不可写入坐标";
+                log.AddERRORLOG(err);
+                return false;//不可写入坐标
+            }
+            //Y轴移动至目标位置，运动过程中注意避让X轴
+            AddMsgList(HoldingRegisters.AxisY_TargetPoint, Target);
+            AddMsgList(Coils.YManualPosition, true);//Y轴手动定位
+           
+            ShowAxisMoveInfo("Y轴移动至:" + TargetPosition);
+            log.AddCommLOG(string.Format("Y轴移动至:{0}\t写入PLC的值:{1}", TargetPosition, TargetPosition * GlobalVar.ConverRate));
+            return true;
+        }
+
+        /// <summary>
+        /// 搬运轴移动至目标位置
+        /// </summary>
+        /// <param name="TargetPosition">目标位置【实际值，不需要*100】</param>
+        internal bool CarryAxisMove(double TargetPosition, ref string err)
+        {
+            if (TargetPosition > INIFileValue.CarryAxisRange.MAX || TargetPosition < INIFileValue.CarryAxisRange.MIN)
+            {
+                err = string.Format("搬运轴移动至:{0}\t超出范围，不执行", TargetPosition);
+                ShowAxisMoveInfo(err, true);
+                log.AddERRORLOG(err);
+                return false;
+            }
+
+            int Target = Convert.ToInt32(TargetPosition * GlobalVar.ConverRate_Carry);
+
+            if (!this.Coils.CanWriteCoordinate.Value)
+            {
+                err = "当前状态不可写入坐标";
+                log.AddERRORLOG(err);
+                return false;//不可写入坐标
+            }
+
+            AddMsgList(HoldingRegisters.AxisCarry_TargetPoint, Target);
+            AddMsgList(Coils.CarryManualPosition, true);//Y轴手动定位
+           
+            ShowAxisMoveInfo("搬运轴移动至:" + TargetPosition);
+            log.AddCommLOG(string.Format("搬运轴移动至:{0}\t写入PLC的值:{1}", TargetPosition, TargetPosition ));// * GlobalVar.ConverRate);//搬运轴不转换
+            return true;
+        }
+
+        /// <summary>
+        /// 显示轴移动的信息
+        /// </summary>
+        /// <param name="str">移动的信息</param>
+        /// <param name="IsErr">是否为异常</param>
+        private void ShowAxisMoveInfo(string str, bool IsErr = false)
+        {
+            if (this.event_AxisMove != null) this.event_AxisMove(str, IsErr);
+        }
+
+        /// <summary>
+        /// 相机轴运动到目标位置--[20184.3 lqz]
+        /// </summary>
+        /// <param name="TargetPosition">目标位置</param>
+        /// <returns></returns>
+        internal bool CCDAxisMove(double TargetPosition, ref string err)
+        {
+            if (TargetPosition > INIFileValue.CCDAxisRange.MAX || TargetPosition < INIFileValue.CCDAxisRange.MIN)
+            {
+                err = string.Format("搬运轴移动至:{0}\t超出范围，不执行", TargetPosition);
+                ShowAxisMoveInfo(err, true);
+                log.AddERRORLOG(err);
+                return false;
+            }
+
+            int Target = Convert.ToInt32(TargetPosition /GlobalVar.ConverRate_CCD);
+
+            if (!this.Coils.CanWriteCoordinate.Value)
+            {
+                err = "当前状态不可写入坐标";
+                log.AddERRORLOG(err);
+                return false;//不可写入坐标
+            }
+            AddMsgList(HoldingRegisters.CCD_ManualPoint, Target);
+            AddMsgList(Coils.CCD_ManualMark, true);//相机轴手动定位
+
+            ShowAxisMoveInfo("搬运轴移动至:" + TargetPosition);
+            log.AddCommLOG(string.Format("搬运轴移动至:{0}\t写入PLC的值:{1}", TargetPosition, TargetPosition));// * GlobalVar.ConverRate);//搬运轴不转换
+            return true;
+        }
+    }
+}

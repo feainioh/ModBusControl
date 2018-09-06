@@ -1,0 +1,408 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace ECInspect
+{
+    public partial class PLCInterface : Frame
+    {
+        public PLCInterface()
+        {
+            InitializeComponent();
+
+            this.tabControl_PLC.ItemSize = new Size(200,60);
+            int textlength = 20;
+            foreach (TabPage item in this.tabControl_PLC.TabPages)
+            {
+                if (item.Text.Length != textlength)
+                {
+                    int padspace = (textlength - item.Text.Length) / 2;
+                    string tempstr = item.Text.PadLeft(item.Text.Length + padspace, ' ');
+                    tempstr = tempstr.PadRight(tempstr.Length + padspace, ' ');
+                    item.Text = tempstr;
+                }
+                else Axis_CCD.Parent = tabControlNF_Axis;
+            }
+        }
+
+        private void PLCInterface_Load(object sender, EventArgs e)
+        {
+            Refresh_DotAxis();
+            Refersh_CCDAxis();
+            this.WindowRefresh.Tick += new EventHandler(WindowRefresh_Tick);
+        }
+
+
+        private void WindowRefresh_Tick(object sender, EventArgs e)
+        {
+            this.either_FeedIsPress.LeftPress = !GlobalVar.c_Modbus.Coils.FeedIsPress.Value;
+            this.either_Rotate.LeftPress = !GlobalVar.c_Modbus.Coils.Rotate.Value;
+        }
+
+        private void tabControlNF_Axis_Selected(object sender, TabControlEventArgs e)
+        {
+            switch (e.TabPageIndex)
+            {
+                case 0:
+                    Refersh_CCDAxis();
+                    break;
+                case 1:
+                    Refresh_DotAxis();
+                    break;
+                case 2:
+                    Refresh_XAxis();
+                    break;
+                case 3:
+                    Refersh_YAxis();
+                    break;
+                case 4:
+                    Refersh_CarryAxis();
+                    break;
+                case 5:
+                    Refersh_PeelAxis();
+                    break;
+                case 6:
+                    Show_Coord();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 刷新打点轴
+        /// </summary>
+        private void Refresh_DotAxis()
+        {
+            this.Axis_Dot.StartRefresh();
+            this.Axis_X.StopRefresh();
+            this.Axis_Y.StopRefresh();
+            this.Axis_Peel.StopRefresh();
+            this.Axis_Carry.StopRefresh();
+        }
+
+        /// <summary>
+        /// 刷新X轴
+        /// </summary>
+        private void Refresh_XAxis()
+        {
+            this.Axis_Dot.StopRefresh();
+            this.Axis_X.StartRefresh();
+            this.Axis_Y.StopRefresh();
+            this.Axis_Peel.StopRefresh();
+            this.Axis_Carry.StopRefresh();
+        }
+
+        /// <summary>
+        /// 刷新Y轴
+        /// </summary>
+        private void Refersh_YAxis()
+        {
+            this.Axis_Dot.StopRefresh();
+            this.Axis_X.StopRefresh();
+            this.Axis_Y.StartRefresh();
+            this.Axis_Peel.StopRefresh();
+            this.Axis_Carry.StopRefresh();
+        }
+
+        /// <summary>
+        /// 刷新搬运轴
+        /// </summary>
+        private void Refersh_CarryAxis()
+        {
+            this.Axis_Dot.StopRefresh();
+            this.Axis_X.StopRefresh();
+            this.Axis_Y.StopRefresh();
+            this.Axis_Peel.StopRefresh();
+            this.Axis_Carry.StartRefresh();
+        }
+
+        /// <summary>
+        /// 刷新剥料轴
+        /// </summary>
+        private void Refersh_PeelAxis()
+        {
+            this.Axis_Dot.StopRefresh();
+            this.Axis_X.StopRefresh();
+            this.Axis_Y.StopRefresh();
+            this.Axis_Peel.StartRefresh();
+            this.Axis_Carry.StopRefresh();
+        }
+        /// <summary>
+        /// 更新相机轴
+        /// </summary>
+        private void Refersh_CCDAxis()
+        {
+            this.Axis_Dot.StopRefresh();
+            this.Axis_X.StopRefresh();
+            this.Axis_Y.StopRefresh();
+            this.Axis_Peel.StopRefresh();
+            this.Axis_Carry.StopRefresh();
+            this.Axis_CCD.StartRefresh();
+        }
+
+        /// <summary>
+        /// 显示坐标【不刷新】
+        /// </summary>
+        private void Show_Coord()
+        {
+            this.textBox_XMark.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.AxisDot_MarkPoint.Value / GlobalVar.ConverRate).ToString("#0.00");
+            this.textBox_YMark.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.AxisY_MarkPoint.Value / GlobalVar.ConverRate).ToString("#0.00");
+            //扫描条码位置[2018.3.28 lqz]
+            this.textBox_XScan.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.AxisDot_ScanPoint.Value / GlobalVar.ConverRate).ToString("#0.00");
+            this.textBox_YScan.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.AxisY_ScanPoint.Value/ GlobalVar.ConverRate).ToString("#0.00");
+            //相机拍照位置
+            this.textBox_XCCD.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.CCD_TargetPoint.Value / 640).ToString("#0.00");
+            this.textBox_YCCD.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.AxisY_PhotoLocation.Value/GlobalVar.ConverRate).ToString("#0.00");
+            //原点
+            this.textBox_Xorigin.Text = GlobalVar.gl_origin_X.ToString("#0.00");
+            this.textBox_Yorigion.Text = GlobalVar.gl_origin_Y.ToString("#0.00");
+        }
+
+        /// <summary>
+        /// 显示数据【不刷新】
+        /// </summary>
+        private void Show_Data()
+        {
+            this.textBox_LongTimeDelay.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.LongTimeDelay.Value / GlobalVar.ConverRate_Delay).ToString("#0.00");
+            this.textBox_MediumTimeDelay.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.MediumTimeDelay.Value / GlobalVar.ConverRate_Delay).ToString("#0.00");
+            this.textBox_ShortTimeDelay.Text = ((double)GlobalVar.c_Modbus.HoldingRegisters.ShortTimeDelay.Value / GlobalVar.ConverRate_Delay).ToString("#0.00");
+        }
+
+        private void tabControl_PLC_Selected(object sender, TabControlEventArgs e)
+        {
+            switch (e.TabPageIndex)
+            { 
+                case 0:
+
+                    Refresh_Comm(false);
+                    break;
+                case 1:
+                    Show_Data();
+                    Refresh_Comm(false);
+                    break;
+                case 2:
+
+                    Refresh_Comm(true);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 刷新通讯
+        /// </summary>
+        /// <param name="Start">是否显示</param>
+        private void Refresh_Comm(bool Start)
+        {
+            if (Start)
+                GlobalVar.c_Modbus.event_MessageText += new CModbus.dele_MessageText(md_event_MessageText);
+            else
+                GlobalVar.c_Modbus.event_MessageText -= new CModbus.dele_MessageText(md_event_MessageText);
+        }
+
+        private void md_event_MessageText(string str, ModbusDll.Modbus.emMsgType nMsgType)
+        {
+            if (isStop) return;
+            try
+            {
+                richbox_CommLog.BeginInvoke(new Action(() =>
+                {
+                    int nSelectStart = richbox_CommLog.TextLength;
+                    Color clr = Color.Lime;
+                    string time = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss:fff\n");
+                    switch (nMsgType)
+                    {
+                        case ModbusDll.Modbus.emMsgType.Send:
+                            clr = Color.Lime;
+                            ShowStr(time + "发送:" + str + "\n", clr);
+                            break;
+                        case ModbusDll.Modbus.emMsgType.Recv://接收的消息
+                            clr = Color.Cyan;
+                            ShowStr(time + "接收:" + str + "\n", clr);
+                            break;
+                        case ModbusDll.Modbus.emMsgType.Error://通信报错
+                            clr = Color.Tomato;
+                            ShowStr(time + "通信出错:" + str + "\n", clr);
+                            break;
+                        default:
+                            clr = Color.Snow;
+                            richbox_CommLog.AppendText(time +
+                                 str + "\n");
+                            break;
+                    }
+                }
+            ));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "显示通讯内容异常");
+            }
+        }
+
+        private void ShowStr(string str, Color color)
+        {
+            const int ClearLength = 150;//删除判断条件
+            const int RemoveLength = 50;//删除的前多少行
+            if (richbox_CommLog.Lines.Length > ClearLength)
+            {
+                string[] lines = richbox_CommLog.Lines;
+                string[] NewLines;
+                int length = 0;
+                for (int i = RemoveLength; i >= 0; i--)
+                {
+                    DateTime time;
+                    if (lines[i].Length >= 8 && DateTime.TryParse(lines[i].Substring(0, 8), out time))
+                    {
+                        length = i;
+                        break;
+                    }
+                }
+                NewLines = new string[lines.Length - length];
+                Array.Copy(lines, length, NewLines, 0, lines.Length - length);
+                this.richbox_CommLog.Lines = NewLines;
+            }
+
+            int nSelectStart = richbox_CommLog.TextLength;
+
+            this.richbox_CommLog.AppendText(str);
+
+            int nLength = richbox_CommLog.TextLength - 1;
+            richbox_CommLog.Select(nSelectStart, nLength);
+            richbox_CommLog.SelectionColor = color;
+
+            this.richbox_CommLog.ScrollToCaret();
+            richbox_CommLog.Select(richbox_CommLog.TextLength, 0);
+        } 
+
+        private bool isStop = false;//是否暂停
+
+        private void btn_Pause_Click(object sender, EventArgs e)
+        {
+            if (!isStop) this.btn_Pause.Text = "Continue";
+            else this.btn_Pause.Text = "Pause";
+
+            isStop = !isStop;
+            this.richbox_CommLog.Focus();
+        }
+
+        private void PLCInterface_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            this.Axis_Dot.StopRefresh();
+            this.Axis_X.StopRefresh();
+            this.Axis_Y.StopRefresh();
+            this.Axis_Peel.StopRefresh();
+            this.Axis_Carry.StopRefresh();
+        }
+
+        /// <summary>
+        /// 更改PLC的保持寄存器的值
+        /// </summary>
+        /// <param name="sender">文本框</param>
+        /// <param name="register">保持寄存器</param>
+        /// <param name="DecimalDigits">小数位数</param>
+        /// <param name="Rate">换算倍数</param>
+        /// <param name="Max">最大值</param>
+        /// <param name="Min">最小值</param>
+        protected void ChangePLCValue(object sender, HoldingRegister register, int DecimalDigits, int Rate = GlobalVar.ConverRate, double Max = 999d, double Min = 0d)
+        {
+            double d = 0d;
+            if (TextClick(sender, ref d, DecimalDigits, Max, Min))
+            {
+                GlobalVar.c_Modbus.AddMsgList(register, (int)(d * Rate));
+            }
+        }
+
+        /// <summary>
+        /// 文本框点击
+        /// </summary>
+        /// <param name="sender">文本框</param>
+        /// <param name="Value">值</param>
+        /// <param name="DecimalDigits">小数位数</param>
+        /// <param name="Max">最大值</param>
+        /// <param name="Min">最小值</param>
+        /// <returns></returns>
+        private bool TextClick(object sender, ref double Value, int DecimalDigits = 1, double Max = 999d, double Min = 0d)
+        {
+            try
+            {
+                this.WindowRefresh.Stop();
+
+                TextBox tb = (TextBox)sender;
+                //鼠标相对于屏幕的坐标
+                Point p1 = MousePosition;
+                //鼠标相对于窗体的坐标
+                Point p2 = this.PointToClient(p1);
+
+                Keyboard keyboard = new Keyboard(p1, Max, Min, DecimalDigits);
+                if (keyboard.ShowDialog() == DialogResult.OK)
+                {
+                    Value = (double)keyboard.RealValue;
+                    return true;
+                }
+                else return false;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            finally
+            {
+                this.WindowRefresh.Start();
+            }
+        }
+
+        private void textBox_XMark_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisDot_MarkPoint, 2);
+        }
+
+        private void textBox_YMark_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.AxisY_MarkPoint, 2);
+        }
+
+        private void either_FeedIsPress_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            {
+                case LeftRightSide.Left:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.FeedIsPress, false);
+                    break;
+                case LeftRightSide.Right:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.FeedIsPress, true);
+                    break;
+            }
+        }
+
+        private void either_Rotate_Event_BtnClick(LeftRightSide lr)
+        {
+            switch (lr)
+            {
+                case LeftRightSide.Left:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Rotate, false);
+                    break;
+                case LeftRightSide.Right:
+                    GlobalVar.c_Modbus.AddMsgList(GlobalVar.c_Modbus.Coils.Rotate, true);
+                    break;
+            }
+        }
+
+        private void textBox_LongTimeDelay_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.LongTimeDelay, 1, GlobalVar.ConverRate_Delay);
+        }
+
+        private void textBox_MediumTimeDelay_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.MediumTimeDelay, 1, GlobalVar.ConverRate_Delay);
+        }
+
+        private void textBox_ShortTimeDelay_Click(object sender, EventArgs e)
+        {
+            ChangePLCValue(sender, GlobalVar.c_Modbus.HoldingRegisters.ShortTimeDelay, 1, GlobalVar.ConverRate_Delay);
+        }
+    }
+}

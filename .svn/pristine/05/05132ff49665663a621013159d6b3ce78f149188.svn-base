@@ -1,0 +1,131 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Collections.Concurrent;
+using System.Speech.Synthesis;
+
+namespace ECInspect
+{
+    /// <summary>
+    /// 文字转换为语音播报
+    /// </summary>
+    sealed class TextSpeech
+    {
+        /// <summary>
+        /// 等待播放的语音队列
+        /// </summary>
+        private ConcurrentQueue<string> SpeechQueue = new ConcurrentQueue<string>();
+        /// <summary>
+        /// 实际语音发声
+        /// </summary>
+        private SpeechSynthesizer m_speak = new SpeechSynthesizer();
+
+        private static TextSpeech Speaker;
+        private TextSpeech() 
+        {
+            Thread Thd_Speaker = new Thread(ThreadSpeak);
+            Thd_Speaker.IsBackground = true;
+            Thd_Speaker.Name = "语音播报线程";
+            Thd_Speaker.Start();
+        }
+
+        /// <summary>
+        /// 获取语音播报
+        /// </summary>
+        /// <returns></returns>
+        public static TextSpeech GetSpeaker()
+        {
+            if (Speaker == null) Speaker = new TextSpeech();
+            return Speaker;
+        }
+
+        /// <summary>
+        /// 加入语音播放
+        /// </summary>
+        /// <param name="Text"></param>
+        public void AddSpeech(string Text)
+        {
+            SpeechQueue.Enqueue(Text);
+        }
+
+        private void ThreadSpeak()
+        {
+            int PresentSpeak;
+            while (!GlobalVar.SoftWareShutDown)
+            {
+                try
+                {
+                    if (!SpeechQueue.IsEmpty)
+                    {
+                        PresentSpeak = SpeechQueue.Count;
+                        Speak(PresentSpeak);
+                        PresentSpeak = 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("语音播放异常:"+ex.Message);
+                }
+                finally
+                {
+                    Thread.Sleep(100);
+                }
+            }
+        }
+
+        private void Speak(int PresentSpeak)
+        {
+            string text = string.Empty;
+            for (int i = 0; i < PresentSpeak; i++)
+            {
+                if (SpeechQueue.TryDequeue(out text))
+                {
+                    //同步朗读
+                    m_speak.Speak(text);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 暂停播放
+        /// </summary>
+        public void Pause()
+        {
+            try
+            {
+                m_speak.Pause();
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 恢复播放
+        /// </summary>
+        public void Resume()
+        {
+            try
+            {
+                m_speak.Resume();
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// 清除剩下的未播放
+        /// </summary>
+        public void Clear()
+        {
+            try
+            {
+                string str = string.Empty;
+                while (SpeechQueue.Count > 0)
+                {
+                    SpeechQueue.TryDequeue(out str);
+                }
+            }
+            catch { }
+        }
+    }
+}

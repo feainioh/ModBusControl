@@ -1,0 +1,208 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using Euresys.Open_eVision_1_2;
+
+namespace ECInspect
+{
+    public partial class CCDMatchForm : Frame
+    {
+        private PicturePanelC paintCut = null;
+
+        Logs log = Logs.LogsT();
+
+        public CCDMatchForm()
+        {
+            InitializeComponent();
+        }
+
+        private void CCDMatchForm_Load(object sender, EventArgs e)
+        {
+            GlobalVar.CCD.Event_ImageGrab += new BaslerCCD.dele_ImageGrab(CCD_Event_ImageGrab);
+            GlobalVar.CCD.OneShot();
+            this.WindowRefresh.Stop();
+        }
+
+        private void CCD_Event_ImageGrab(Bitmap e)
+        {
+            if (this.pictureBox_Image.InvokeRequired)
+            {
+                this.pictureBox_Image.Invoke(new Action(delegate {CCD_Event_ImageGrab(e);}));
+            }
+            else
+            {
+                //Match_OpeneVision open = new Match_OpeneVision();
+                //EROIBW8 er = open.ConvertBitmapToEImageBW8(e);
+                //EROIBW1 image = new EROIBW1();
+                //EasyImage.Threshold(er, image, 80);
+                this.pictureBox_Image.Image = e;
+            }
+        }
+
+        private void CCDMatchForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            GlobalVar.CCD.Event_ImageGrab -= CCD_Event_ImageGrab;
+            this.WindowRefresh.Start();
+        }
+
+
+        #region 鼠标操作
+
+        int winbeginx = 0;
+        int winbeginy = 0;
+        bool enter = false;
+
+        int rightClickX = 0; //右击坐标
+        int rightClickY = 0;
+        private void pictureBox_Image_MouseDown(object sender, MouseEventArgs e)
+        {
+            try
+            {
+                if (this.pictureBox_Image.Image == null)
+                    return;
+                if (e.Button == MouseButtons.Right)  //右键处理
+                {
+                    rightClickX = e.X;
+                    rightClickY = e.Y;
+                    enter = false;
+                    return;
+                }
+                this.paintCut = new PicturePanelC();
+                this.paintCut.Event_ROIChanged += new PicturePanelC.dele_ROIChanged(paintCut_Event_ROIChanged);
+                enter = true;
+                winbeginx = e.X;
+                winbeginy = e.Y;
+            }
+            catch { }
+        }
+
+        private void pictureBox_Image_MouseMove(object sender, MouseEventArgs e)
+        {
+            try
+            {
+                if (e.Button == MouseButtons.Right) //右键不处理
+                    return;
+                if (this.pictureBox_Image.Image == null)
+                    return;
+                if (enter)
+                {
+                    this.paintCut.WinX = winbeginx;
+                    this.paintCut.WinY = winbeginy;
+                    if (e.X - winbeginx < 0 || e.Y - winbeginy < 0)
+                        return;
+                    this.paintCut.Winwidth = e.X - winbeginx;
+                    this.paintCut.Winheight = e.Y - winbeginy;
+                    DrawpaintRectangle();
+                }
+            }
+            catch { }
+        }
+
+        public void DrawpaintRectangle()
+        {
+            try
+            {
+                if (paintCut != null)
+                {
+                    paintCut.Location = new Point(paintCut.WinX, paintCut.WinY);
+                    paintCut.Size = new Size(paintCut.Winwidth, paintCut.Winheight);
+                    paintCut.Refresh();
+                    if (!this.pictureBox_Image.Controls.Contains(paintCut))  //添加图片区域
+                    {
+                        this.pictureBox_Image.Controls.Add(paintCut);
+                    }
+                    this.paintCut.paintRectangle();
+                    this.pictureBox_Image.Update();
+                }
+            }
+            catch { }
+        }
+
+        private void pictureBox_Image_MouseUp(object sender, MouseEventArgs e)
+        {
+            try
+            {
+                if (this.pictureBox_Image.Image == null)
+                    return;
+                if (e.Button == MouseButtons.Right) //右键不处理
+                    return;
+                if (enter)
+                {
+                    try
+                    {
+                        enter = false;
+                        int pwidth = e.X - winbeginx;
+                        int pheight = e.Y - winbeginy;
+                        this.paintCut.WinX = winbeginx;
+                        this.paintCut.WinY = winbeginy;
+                        this.paintCut.Winwidth = pwidth;
+                        this.paintCut.Winheight = pheight;
+                        this.paintCut.setPicturepoint(this.pictureBox_Image.Height, this.pictureBox_Image.Width);
+                        if (paintCut.Winwidth < 20 || paintCut.Winheight < 20)
+                        {
+                            this.pictureBox_Image.Controls.Remove(this.paintCut);
+                            this.paintCut = null;
+                            return;
+                        }
+                        this.paintCut.paintRectangle();
+                        paintCut_Event_ROIChanged(this.paintCut);
+                        this.paintCut = null;
+                    }
+                    catch
+                    {
+                        MessageBox.Show("添加目标失败", "ERROR");
+                    }
+                }
+            }
+            catch { }
+        }
+        #endregion
+
+        private void paintCut_Event_ROIChanged(PicturePanelC ppc)
+        {
+            try
+            {
+                Image image = this.pictureBox_Image.Image;
+                GlobalVar.MatchModel.LearnPattern(image, ppc);//学习ROI模型
+                
+                List<PositionInfo> result = new List<PositionInfo>();
+                GlobalVar.MatchModel.ShapeMatch(new Bitmap(image), ref result);
+                if (result.Count > 0)
+                {
+                    INIFileValue.MarkX_Std = result[0].CenterX;
+                    INIFileValue.MarkY_Std = result[0].CenterY;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("绘制ROI异常:" + ex.Message);
+                log.AddERRORLOG("绘制ROI异常:" + ex.Message);
+            }
+        }
+
+        private void btn_Save_Click(object sender, EventArgs e)
+        {
+            INIFileValue.MatchModelFile = Application.StartupPath + @"\Config\Match.MCH";
+            if (GlobalVar.MatchModel.Save(INIFileValue.MatchModelFile))
+            {
+                double RealX = GlobalVar.c_Modbus.HoldingRegisters.AxisX_RealLocation.Value;//实际位置
+                double RealY = GlobalVar.c_Modbus.HoldingRegisters.AxisY_RealLocation.Value;//实际位置
+                //INIFileValue.AxisX_Std = RealX / GlobalVar.ConverRate;
+                //INIFileValue.AxisY_Std = RealY / GlobalVar.ConverRate;
+                //myFunction.WriteIniString(INIFileValue.gl_inisection_CCD, INIFileValue.gl_iniKey_AxisX_Std, INIFileValue.AxisX_Std.ToString());//当前X轴坐标
+                //myFunction.WriteIniString(INIFileValue.gl_inisection_CCD, INIFileValue.gl_iniKey_AxisY_Std, INIFileValue.AxisY_Std.ToString());//当前Y轴坐标
+
+                myFunction.WriteIniString(INIFileValue.gl_inisection_CCD, INIFileValue.gl_iniKey_MarkX_Std, INIFileValue.MarkX_Std.ToString());//当前Mark点X坐标
+                myFunction.WriteIniString(INIFileValue.gl_inisection_CCD, INIFileValue.gl_iniKey_MarkY_Std, INIFileValue.MarkY_Std.ToString());//当前Mark点Y坐标
+
+                myFunction.WriteIniString(INIFileValue.gl_inisection_OpeneVision, INIFileValue.gl_iniKey_MatchFile, INIFileValue.MatchModelFile);
+            }
+        }
+
+    }
+}
